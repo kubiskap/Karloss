@@ -3,6 +3,7 @@ import json
 import os
 import pickle
 import datetime
+from operator import add
 
 from msg import ItsMessage
 from packet import Packet
@@ -23,7 +24,7 @@ class Packets(object):
         self.summary = {}
         self.packets = []
 
-    def import_packets(self, input_file):
+    def import_file(self, input_file):
         """
         Method to decode all packets in "input_file" and stack them into an array of dictionaries.
 
@@ -86,6 +87,13 @@ class Packets(object):
 
     def analyse_packets(self):
 
+        def add_pkt_summary():
+            default_val = [0, 0, 0]
+            ps = pkt.pkt_summary
+            s = self.summary
+
+            self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in set(ps) | set(s)}
+
         # Only if packets have been imported first
         if self.packets:
             print('Starting packet analysis...')
@@ -99,8 +107,12 @@ class Packets(object):
 
                 # If ASN for this message type has been found, proceed with analysis
                 if pkt_asn:
+
                     # Analyse packet
                     pkt.analyse_packet(pkt_asn[0])
+
+                    # Add pkt_summary of the packet into the big summary
+                    add_pkt_summary()
 
                     time_packet_end = datetime.datetime.now()
                     print(
