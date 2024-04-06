@@ -90,6 +90,10 @@ class PacketAnalyzerApp:
         # Create a log file for the current session
         self.log_file_name = self.create_log_file()
 
+        # Display configuration for the current session
+        self.log_message(f"Configuration File: {config_file}")
+        self.log_message(f"PCAP File: {pcap_file}")
+
         # Display import information in the log text window and log file
         self.log_message(f"Packets imported: {len(packet_handler.packets)}, Import duration: {import_duration:.2f} seconds.")
 
