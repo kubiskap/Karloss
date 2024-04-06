@@ -58,7 +58,7 @@ class Packets(object):
         subfolder_name = os.path.basename(input_file)
 
         # Create the directory for JSON cache if it doesn't exist
-        cache_dir = os.path.join('cache', subfolder_name)
+        cache_dir = os.path.join('cache', subfolder_name, 'import_cache')
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
 
