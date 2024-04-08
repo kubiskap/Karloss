@@ -107,7 +107,7 @@ class PacketAnalyzerApp:
         current_packet_index = 0
 
         # Create analysed cache dir
-        analysed_cache_dir = self.packet_handler.create_cache_dir('analysed_cache')
+        analysed_cache_dir = self.packet_handler.cache_dir('analysed_cache')
 
         # Check if all packets have been analysed by comparing cache files with expected packet count
         cache_files = os.listdir(analysed_cache_dir)
