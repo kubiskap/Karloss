@@ -12,6 +12,18 @@ from packet import Packet
 class Packets(object):
     def __init__(self, config_location='./config.json'):
 
+        def create_log_file():
+            # Create 'log' folder in root if it doesn't exist
+            if not os.path.exists("log"):
+                os.makedirs("log")
+
+            # Generate a log file name based on current date and time
+            timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+            log_file_name = f"log/session_{timestamp}.log"
+
+            # Return the log file name
+            return log_file_name
+
         # Open config
         with open(config_location, 'r') as f:
             config = json.load(f)
@@ -19,10 +31,43 @@ class Packets(object):
         # Establish ItsMessage object for each message type configured
         self.configured_msgs = {key: ItsMessage(asn_files=value['asnFiles'], msg_name=value['msgName'])
                                 for key, value in config['msgPorts'].items()}
+        # Establish input_file location
+        self.input_file = None
 
         # Establish summary dictionary and packet array
         self.summary = {}
         self.packets = []
+
+        # Create log file for current session
+        self.log_file_name = create_log_file()
+
+    def cache_dir(self, subdir):
+        # Get the name of the input file without the path and extension
+        subfolder_name = os.path.basename(self.input_file)
+
+        # Create the directory for cache if it doesn't exist
+        cache_dir = os.path.join('cache', subfolder_name, subdir)
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+
+        return cache_dir
+
+    def log_message(self, message):
+        # Get current date and time
+        timestamp = datetime.datetime.now().strftime("[%d-%m-%Y %H:%M:%S]")
+
+        # Format the log message with timestamp
+        formatted_message = f"{timestamp} {message}"
+
+        # Append the message to the log file
+        with open(self.log_file_name, "a") as log_file:
+            log_file.write(formatted_message + "\n")
+
+        # Print log entry
+        print(formatted_message)
+
+        # Return message as variable for use in GUI
+        return formatted_message
 
     def import_file(self, input_file):
         """
@@ -48,24 +93,22 @@ class Packets(object):
             else:
                 return None, 'Non-C-ITS packet'
 
+        # Add input_file to method attributes
+        self.input_file = input_file
+
         # Import packets from pcap
         pcap = pyshark.FileCapture(input_file, include_raw=True, use_json=True)
 
         # Clear out packet_array
         self.packets = []
 
-        # Get the name of the input file without the path and extension
-        subfolder_name = os.path.basename(input_file)
-
-        # Create the directory for JSON cache if it doesn't exist
-        cache_dir = os.path.join('cache', subfolder_name, 'import_cache')
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
+        # Create cache directory
+        import_cache_dir = self.cache_dir('import_cache')
 
         for idx, pkt in enumerate(pcap):
 
             # Packet file path used for cache
-            packet_file = os.path.join(cache_dir, f'packet{idx + 1}.pkl')
+            packet_file = os.path.join(import_cache_dir, f'packet{idx + 1}.pkl')
 
             # If packet is in cache dir, load it from there instead of importing it again
             if os.path.exists(packet_file):
@@ -126,8 +169,8 @@ class Packets(object):
 
             time_analysis_end = datetime.datetime.now()
             print('-----------------------------------\n'
-                 f'Duration: {(time_analysis_end - time_analysis_start).total_seconds() / 60} min;'
-                 f'Packets analysed: {len(self.packets)}')
+                  f'Duration: {(time_analysis_end - time_analysis_start).total_seconds() / 60} min;'
+                  f'Packets analysed: {len(self.packets)}')
 
         else:
             print('You need to import the packets first.')

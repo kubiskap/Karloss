@@ -87,15 +87,12 @@ class PacketAnalyzerApp:
         self.log_text = scrolledtext.ScrolledText(root, width=80, height=20, wrap=tk.WORD)
         self.log_text.grid(row=4, column=0, columnspan=2, padx=5, pady=10)
 
-        # Create a log file for the current session
-        self.log_file_name = self.create_log_file()
-
         # Display configuration for the current session
-        self.log_message(f"Configuration File: {config_file}")
-        self.log_message(f"PCAP File: {pcap_file}")
+        self.gui_log_message(f"Configuration File: {config_file}")
+        self.gui_log_message(f"PCAP File: {pcap_file}")
 
         # Display import information in the log text window and log file
-        self.log_message(f"Packets imported: {len(packet_handler.packets)}, Import duration: {import_duration:.2f} seconds.")
+        self.gui_log_message(f"Packets imported: {len(packet_handler.packets)}, Import duration: {import_duration:.2f} seconds.")
 
     def analyze_packets(self):
         # Disable button during analysis
@@ -109,24 +106,22 @@ class PacketAnalyzerApp:
         total_packets = len(self.packet_handler.packets)
         current_packet_index = 0
 
-        # Get the name of the input file without the path and extension
-        subfolder_name = os.path.basename(self.pcap_file)
-
-        # Create the directory for analysed packet cache if it doesn't exist
-        cache_dir = os.path.join('cache', subfolder_name, 'analysed_cache')
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
+        # Create analysed cache dir
+        analysed_cache_dir = self.packet_handler.create_cache_dir('analysed_cache')
 
         # Check if all packets have been analysed by comparing cache files with expected packet count
-        cache_files = os.listdir(cache_dir)
+        cache_files = os.listdir(analysed_cache_dir)
         if len(cache_files) == total_packets:
             # All packets have been previously analysed, reset cache and perform full analysis
-            self.reset_cache(cache_dir)
-            self.log_message("Resetting cache for full analysis...")
+            self.reset_cache(analysed_cache_dir)
+            self.gui_log_message("Resetting cache for full analysis...")
+        elif not cache_files:
+            # No files found, start new analysis
+            self.gui_log_message("Starting new analysis...")
         else:
             # Resume analysis from the last analysed packet index
             current_packet_index = len(cache_files)
-            self.log_message(f"Resuming analysis from packet {current_packet_index + 1}...")
+            self.gui_log_message(f"Resuming analysis from packet {current_packet_index + 1}...")
 
         while current_packet_index < total_packets:
             # Analyze the next packet
@@ -147,10 +142,10 @@ class PacketAnalyzerApp:
                 analysis_duration = (end_analysis_time - start_analysis_time).total_seconds()
 
                 # Log analysis progress
-                self.log_message(f"{packet.type} packet {current_packet_index + 1}/{total_packets} analyzed. Analysis duration: {analysis_duration:.2f} seconds.")
+                self.gui_log_message(f"{packet.type} packet {current_packet_index + 1}/{total_packets} analyzed. Analysis duration: {analysis_duration:.2f} seconds.")
 
                 # Cache the analysed packet
-                packet_cache_file = os.path.join(cache_dir, f'packet{current_packet_index + 1}.pkl')
+                packet_cache_file = os.path.join(analysed_cache_dir , f'packet{current_packet_index + 1}.pkl')
                 with open(packet_cache_file, 'wb') as f:
                     pickle.dump(packet, f, pickle.HIGHEST_PROTOCOL)
 
@@ -160,7 +155,7 @@ class PacketAnalyzerApp:
 
         # Re-enable UI after analysis is complete
         self.enable_ui()
-        self.log_message("Analysis Complete")
+        self.gui_log_message("Analysis Complete")
 
     def reset_cache(self, cache_dir):
         # Delete all files in the analysed cache directory
@@ -180,32 +175,12 @@ class PacketAnalyzerApp:
             if isinstance(widget, tk.Button):
                 widget.config(state=tk.NORMAL)
 
-    def create_log_file(self):
-        # Create 'log' folder if it doesn't exist
-        if not os.path.exists("log"):
-            os.makedirs("log")
-
-        # Generate a log file name based on current date and time
-        timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        log_file_name = f"log/session_{timestamp}.log"
-
-        # Return the log file name
-        return log_file_name
-
-    def log_message(self, message):
-        # Get current date and time
-        timestamp = datetime.datetime.now().strftime("[%d-%m-%Y %H:%M:%S]")
-
-        # Format the log message with timestamp
-        formatted_message = f"{timestamp} {message}"
+    def gui_log_message(self, message):
+        formatted_message = self.packet_handler.log_message(message)
 
         # Append the message to the log text window
         self.log_text.insert(tk.END, formatted_message + "\n")
         self.log_text.see(tk.END)  # Scroll to the end of the log
-
-        # Append the message to the log file
-        with open(self.log_file_name, "a") as log_file:
-            log_file.write(formatted_message + "\n")
 
 
 if __name__ == "__main__":
