@@ -9,7 +9,7 @@ from msg import ItsMessage
 from packet import Packet
 
 
-class Packets(object):
+class PacketAnalyser(object):
     def __init__(self, config_location='./config.json'):
 
         def create_log_file():
@@ -31,6 +31,7 @@ class Packets(object):
         # Establish ItsMessage object for each message type configured
         self.configured_msgs = {key: ItsMessage(asn_files=value['asnFiles'], msg_name=value['msgName'])
                                 for key, value in config['msgPorts'].items()}
+
         # Establish input_file location
         self.input_file = None
 
@@ -39,7 +40,21 @@ class Packets(object):
         self.packets = []
 
         # Create log file for current session
-        self.log_file_name = create_log_file()
+        self.log_file = create_log_file()
+
+        # Display session information
+        self.log_message(f'New session started with config: {config_location}')
+
+    @staticmethod
+    def __cache_action(file_path, action, cache_object=None):
+        match action:
+            case 'w':
+                with open(file_path, 'wb') as f:
+                    pickle.dump(cache_object, f, pickle.HIGHEST_PROTOCOL)
+            case 'r':
+                with open(file_path, 'rb') as f:
+                    cache_object = pickle.load(f)
+                return cache_object
 
     def cache_dir(self, subdir):
         # Get the name of the input file without the path and extension
@@ -60,7 +75,7 @@ class Packets(object):
         formatted_message = f"{timestamp} {message}"
 
         # Append the message to the log file
-        with open(self.log_file_name, "a") as log_file:
+        with open(self.log_file, "a") as log_file:
             log_file.write(formatted_message + "\n")
 
         # Print log entry
@@ -96,37 +111,45 @@ class Packets(object):
         # Add input_file to method attributes
         self.input_file = input_file
 
-        # Import packets from pcap
-        pcap = pyshark.FileCapture(input_file, include_raw=True, use_json=True)
-
-        # Clear out packet_array
+        # Reset packet array
         self.packets = []
 
-        # Create cache directory
-        import_cache_dir = self.cache_dir('import_cache')
+        try:
+            # Import packets from pcap
+            pcap = pyshark.FileCapture(input_file, include_raw=True, use_json=True)
 
-        for idx, pkt in enumerate(pcap):
+            # Create cache directory
+            import_cache_dir = self.cache_dir('import_cache')
 
-            # Packet file path used for cache
-            packet_file = os.path.join(import_cache_dir, f'packet{idx + 1}.pkl')
+            time_import_start = datetime.datetime.now()
 
-            # If packet is in cache dir, load it from there instead of importing it again
-            if os.path.exists(packet_file):
+            for idx, pkt in enumerate(pcap):
 
-                with open(packet_file, 'rb') as f:
-                    pickle_pkt = pickle.load(f)
+                # Packet file path used for cache
+                packet_file = os.path.join(import_cache_dir, f'packet{idx + 1}.pkl')
 
-                self.packets.append(pickle_pkt)
+                # If packet is in cache dir, load it from there instead of importing it again
+                if os.path.exists(packet_file):
+                    loaded_pkt = self.__cache_action(packet_file, 'r')
+                    self.packets.append(loaded_pkt)
 
-            # If packet is not in cache dir, import and save it
-            else:
-                pkt_content, pkt_type = import_pkt()
-                pkt_object = Packet(msg_type=pkt_type, content=pkt_content)
+                # If packet is not in cache dir, import and save it
+                else:
+                    pkt_content, pkt_type = import_pkt()
+                    pkt_object = Packet(msg_type=pkt_type, content=pkt_content)
 
-                with open(packet_file, 'wb') as f:
-                    pickle.dump(pkt_object, f, pickle.HIGHEST_PROTOCOL)
+                    self.__cache_action(packet_file, 'w', pkt_object)
 
-                self.packets.append(pkt_object)
+                    self.packets.append(pkt_object)
+
+            time_import_end = datetime.datetime.now()
+            import_duration = (time_import_end - time_import_start).total_seconds()
+            self.log_message(
+                f'{idx + 1} packets imported from {input_file}; Import duration: {import_duration:.2f} seconds. '
+                f'Total imported packets: {len(self.packets)}')
+        finally:
+            # Explicitly close the capture to release resources and terminate event loop
+            pcap.close()
 
     def analyse_packets(self):
 
@@ -137,40 +160,84 @@ class Packets(object):
 
             self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in set(ps) | set(s)}
 
+        # Create analysed cache dir
+        analysed_cache_dir = self.cache_dir('analysed_cache')
+
+        # List all files that should be in cache, list if each of the files is present in cache
+        cache_files = [os.path.join(analysed_cache_dir, f'packet{idx + 1}.pkl') for idx, pkt in enumerate(self.packets)]
+        cache_present = [os.path.isfile(f) for f in cache_files]
+
         # Only if packets have been imported first
         if self.packets:
-            print('Starting packet analysis...')
             time_analysis_start = datetime.datetime.now()
 
-            for idx, pkt in enumerate(self.packets):
-                time_packet_start = datetime.datetime.now()
+            # Check if all packets are present in the analysed cache
+            if all(cache_present):
+                self.log_message('All packets present in analysed cache. Resetting cache for repeated analysis...')
 
-                # Get asn_rebuilt for packet type
-                pkt_asn = [msg.asn_rebuilt for msg in self.configured_msgs.values() if pkt.type == msg.msg_name]
+                # Delete all files in the analysed cache directory
+                for file in cache_files:
+                    os.remove(file)
 
-                # If ASN for this message type has been found, proceed with analysis
-                if pkt_asn:
+            self.log_message('Starting packet analysis...')
+            for idx, file in enumerate(cache_files):
 
-                    # Analyse packet
-                    pkt.analyse_packet(pkt_asn[0])
+                # Get packet object from array
+                pkt = self.packets[idx]
+
+                # If packet is present in analysed cache, replace the current packet with it
+                if cache_present[idx]:
+                    time_packet_start = datetime.datetime.now()
+
+                    # Replace packet object from array with the one from cache
+                    self.packets[idx] = self.__cache_action(file, 'r')
 
                     # Add pkt_summary of the packet into the big summary
                     add_pkt_summary()
 
                     time_packet_end = datetime.datetime.now()
-                    print(
-                        f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
-                        f'{(time_packet_end - time_packet_start).total_seconds()} seconds.')
-                else:
-                    time_packet_end = datetime.datetime.now()
-                    print(
-                        f'Packet {idx + 1}/{len(self.packets)} was not analysed '
-                        f'({(time_packet_end - time_packet_start).total_seconds()} s) -- {pkt.type}.')
+
+                    self.log_message(f'{self.packets[idx].type} packet {idx + 1}/{len(self.packets)} loaded from'
+                                     f' analysed cache in '
+                                     f'{(time_packet_end - time_packet_start).total_seconds()} seconds.')
+
+                # If not present in analysed cache, analyse it and save it into the cache
+                elif not cache_present[idx]:
+                    time_packet_start = datetime.datetime.now()
+
+                    # Get asn_rebuilt for packet type
+                    pkt_asn = [msg.asn_rebuilt for msg in self.configured_msgs.values() if pkt.type == msg.msg_name]
+
+                    # If ASN for this message type has been found, proceed with analysis
+                    if pkt_asn:
+                        # Analyse packet
+                        pkt.analyse_packet(pkt_asn[0])
+
+                        # Add pkt_summary of the packet into the big summary
+                        add_pkt_summary()
+
+                        time_packet_end = datetime.datetime.now()
+
+                        # Save packet into cache after analysis
+                        self.__cache_action(file, 'w', pkt)
+
+                        self.log_message(
+                                f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
+                                f'{(time_packet_end - time_packet_start).total_seconds()} seconds.')
+                    else:
+                        time_packet_end = datetime.datetime.now()
+
+                        # Save not supported packet into analysed cache
+                        self.__cache_action(file, 'w', pkt)
+
+                        self.log_message(
+                            f'Packet {idx + 1}/{len(self.packets)} was not analysed '
+                            f'({(time_packet_end - time_packet_start).total_seconds()} s) -- {pkt.type}.')
 
             time_analysis_end = datetime.datetime.now()
-            print('-----------------------------------\n'
-                  f'Duration: {(time_analysis_end - time_analysis_start).total_seconds() / 60} min;'
-                  f'Packets analysed: {len(self.packets)}')
+            self.log_message('Analysis complete.'
+                             f'Duration: {(time_analysis_end - time_analysis_start).total_seconds() / 60} min;'
+                             f' Packets analysed: {len(self.packets)}')
 
         else:
-            print('You need to import the packets first.')
+            self.log_message('You need to import the packets first before analysis.')
