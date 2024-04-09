@@ -35,9 +35,10 @@ class PacketAnalyser(object):
         # Establish input_file location
         self.input_file = None
 
-        # Establish summary dictionary and packet array
+        # Establish summary dictionary, packet array and packet type statistics
         self.summary = {}
         self.packets = []
+        self.packet_types = {}
 
         # Create log file for current session
         self.log_file = create_log_file()
@@ -142,6 +143,14 @@ class PacketAnalyser(object):
 
                     self.packets.append(pkt_object)
 
+            # Generate packet type statistics
+            for idx, packet in enumerate(self.packets):
+                if packet.type in self.packet_types.keys():
+                    self.packet_types[packet.type]['freq'] += 1
+                    self.packet_types[packet.type]['idx'] = self.packet_types[packet.type]['idx'] + [idx + 1]
+                else:
+                    self.packet_types[packet.type] = {'freq': 1, 'idx': [idx + 1]}
+
             time_import_end = datetime.datetime.now()
             import_duration = (time_import_end - time_import_start).total_seconds()
             self.log_message(
@@ -222,8 +231,8 @@ class PacketAnalyser(object):
                         self.__cache_action(file, 'w', pkt)
 
                         self.log_message(
-                                f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
-                                f'{(time_packet_end - time_packet_start).total_seconds()} seconds.')
+                            f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
+                            f'{(time_packet_end - time_packet_start).total_seconds()} seconds.')
                     else:
                         time_packet_end = datetime.datetime.now()
 
@@ -241,3 +250,32 @@ class PacketAnalyser(object):
 
         else:
             self.log_message('You need to import the packets first before analysis.')
+
+    def output_results(self, output_location):
+        # If summary is not empty (analysis has been run)
+        if not self.summary:
+            # Create folder in output_location based on session name (taken from log_file)
+            output_path = os.path.join(output_location, os.path.basename(self.log_file))
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+
+            # Generate summary.json
+            with open(os.path.join(output_path), 'summary.json') as f:
+                json.dump(self.summary, f, indent=4, sort_keys=True)
+
+            # Generate pkt_types.json
+            with open(os.path.join(output_path), 'pkt_types.json') as f:
+                json.dump(self.packet_types, f, indent=4, sort_keys=True)
+
+            # Generate output for each analysed packet
+            packets_path = os.path.join(output_path, 'packets')
+            if not os.path.exists(packets_path):
+                os.makedirs(packets_path)
+
+            for idx, packet in enumerate(self.packets):
+                # Join desired packet parameters into one dict
+                json_packet = {'type': packet.type, 'state': packet.state, 'problems': packet.pkt_problems,
+                               'data_analysed': packet.data_analysed}
+                with open(os.path.join(packets_path, f'packet{idx + 1}.json')) as f:
+                    json.dump(json_packet, f, indent=4, sort_keys=False)
+
