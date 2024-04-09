@@ -132,17 +132,16 @@ class Packet(object):
                                 if restriction is not None:
                                     in_range.append(value in range(restriction[0], restriction[1] + 1))
                             if not all(in_range):
-                                problems.append(Problem(1, 'Out of range.'))
+                                problems.append(Problem(1, 'Value is out of range.'))
                         if 'named-numbers' in asn.keys():
-                            try:
-                                if value == asn['named-numbers']['unavailable']:
+                            if 'unavailable' in asn['named-numbers'].keys() and value == asn['named-numbers']['unavailable']:
                                     problems.append(Problem(0, 'Value is unavailable.'))
-                            except KeyError:
-                                pass
-                            if value not in asn['named-numbers'].values():
+                            elif 'outOfRange' in asn['named-numbers'].keys() and value == asn['named-numbers']['outOfRange']:
+                                    problems.append(Problem(1, 'Value is out of range.'))
+                            elif value not in asn['named-numbers'].values():
                                 problems.append(Problem(0, 'Value not in named-numbers.'))
                             else:
-                                value_extended = [value,
+                                value_extended = [value_extended,
                                                   list(asn['named-numbers'].keys())[
                                                       list(asn['named-numbers'].values()).index(value)]]
 
@@ -188,7 +187,7 @@ class Packet(object):
                             for index, bit in enumerate(list(value)):
                                 if bit == '1':
                                     bits_activated.append(asn['named-bits'][index][0])
-                            value_extended = [value, bits_activated]
+                            value_extended = [value_extended, bits_activated]
 
                     case 'SEQUENCE OF':
                         """
@@ -279,14 +278,10 @@ class Packet(object):
                 problems_key = '.'.join(path)
 
                 # Create a key in pkt_problems for this specific parameter
-                self.pkt_problems[problems_key] = [[], []]  # Warnings, Errors
+                self.pkt_problems[problems_key] = {'Warnings': None, 'Errors': None}
 
-                for problem in problems:
-                    match problem.flag:
-                        case 0:
-                            self.pkt_problems[problems_key][0].append(problem.desc)
-                        case 1:
-                            self.pkt_problems[problems_key][1].append(problem.desc)
+                self.pkt_problems[problems_key]['Warnings'] = [problem.desc for problem in problems if problem.flag == 0]
+                self.pkt_problems[problems_key]['Errors'] = [problem.desc for problem in problems if problem.flag == 1]
 
         def evaluate_parameter():
             # If the parameter is evaluated as an Error, set both the parameter and packet state as Error
