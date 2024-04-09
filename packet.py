@@ -330,18 +330,19 @@ class Packet(object):
                     else:
                         asn = asn_matches[0].value
 
-                        if not isinstance(asn, dict):
-                            # In case "asn" is not dict, throw a TypeError.
-                            print(asn)
-                            raise TypeError(f'ASN not dict type for parameter located on "{path}"')
-                        elif asn == 'ASN not found':
+                        if asn == 'ASN not found':
                             # This means that the ASN decompiler could not find a definition for this parameter type.
                             problems.append(
                                 Problem(1, 'ASN definition not found for this parameter.'))
+                        elif not isinstance(asn, dict):
+                            # In case "asn" is not dict, throw a TypeError.
+                            print(asn)
+                            raise TypeError(f'ASN not dict type for parameter located on "{path}"')
 
                     # Establish extended value
                     extended_value = copy.deepcopy(value)
 
+                    # If there are no problems with the ASN, analyse the parameter
                     if not problems:
                         # Analyse the parameter
                         extended_value = analyse_parameter()
