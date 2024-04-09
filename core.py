@@ -151,7 +151,7 @@ class PacketAnalyser(object):
             # Explicitly close the capture to release resources and terminate event loop
             pcap.close()
 
-    def analyse_packets(self):
+    def analyse(self):
 
         def add_pkt_summary():
             default_val = [0, 0, 0]
