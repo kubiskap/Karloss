@@ -103,7 +103,7 @@ class PacketAnalyser(object):
                     try:
                         msg_object = self.configured_msgs.get(pkt.btpb.dstport)
                     except KeyError:
-                        return None, 'Unconfigured C-ITS message'
+                        return None, 'Unknown C-ITS message'
                     else:
                         return msg_object.decode(bytes.fromhex(pkt.its_raw.value)), msg_object.msg_name
             else:
@@ -260,11 +260,11 @@ class PacketAnalyser(object):
                 os.makedirs(output_path)
 
             # Generate summary.json
-            with open(os.path.join(output_path), 'summary.json') as f:
+            with open(os.path.join(output_path, 'summary.json'), 'w') as f:
                 json.dump(self.summary, f, indent=4, sort_keys=True)
 
             # Generate pkt_types.json
-            with open(os.path.join(output_path), 'pkt_types.json') as f:
+            with open(os.path.join(output_path, 'pkt_types.json'), 'w') as f:
                 json.dump(self.packet_types, f, indent=4, sort_keys=True)
 
             # Generate output for each analysed packet
@@ -274,8 +274,12 @@ class PacketAnalyser(object):
 
             for idx, packet in enumerate(self.packets):
                 # Join desired packet parameters into one dict
-                json_packet = {'type': packet.type, 'state': packet.state, 'problems': packet.pkt_problems,
-                               'data_analysed': packet.data_analysed}
-                with open(os.path.join(packets_path, f'packet{idx + 1}.json')) as f:
+                json_packet = {
+                    'type': packet.type,
+                    'state': packet.state,
+                    'problems': packet.pkt_problems,
+                    'data_analysed': packet.data_analysed
+                }
+                with open(os.path.join(packets_path, f'packet{idx + 1}.json'), 'w') as f:
                     json.dump(json_packet, f, indent=4, sort_keys=False)
 
