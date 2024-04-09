@@ -1,11 +1,22 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext
-from tkinter.ttk import Progressbar
-from core import Packets
+from tkinter import filedialog, scrolledtext
+import sys
+from core import PacketAnalyser
 import datetime
 import threading
-import os
-import pickle
+from io import StringIO
+
+
+class WindowStream(StringIO):
+    def __init__(self, text_widget):
+        self.text_widget = text_widget
+        super().__init__()
+
+    def write(self, data):
+        self.text_widget.insert(tk.END, data)
+        self.text_widget.see(tk.END)  # Auto-scroll to the end of the text
+        super().write(data)
+
 
 class ConfigurationWindow:
     def __init__(self, root):
@@ -44,8 +55,8 @@ class ConfigurationWindow:
         pcap_file = self.pcap_file_path.get()
 
         if config_file and pcap_file:
-            # Initialize Packets object with the specified config file
-            packet_handler = Packets(config_location=config_file)
+            # Initialize PacketAnalyser object with the specified config file
+            packet_handler = PacketAnalyser(config_location=config_file)
 
             # Import packets from the specified PCAP file
             start_import_time = datetime.datetime.now()
@@ -75,108 +86,59 @@ class PacketAnalyzerApp:
         self.import_duration = import_duration
 
         # Create GUI elements for main window
-        tk.Label(root, text=f"Configuration File: {config_file}").grid(row=0, column=0, padx=5, pady=5)
-        tk.Label(root, text=f"PCAP File: {pcap_file}").grid(row=1, column=0, padx=5, pady=5)
+        tk.Label(root, text=f"Configuration File: {config_file}").pack(padx=5, pady=5)
+        tk.Label(root, text=f"PCAP File: {pcap_file}").pack(padx=5, pady=5)
 
-        self.progressbar = Progressbar(root, orient=tk.HORIZONTAL, length=300, mode='determinate')
-        self.progressbar.grid(row=2, column=0, columnspan=2, padx=5, pady=10)
-
-        tk.Button(root, text="Analyze Packets", command=self.analyze_packets).grid(row=3, column=0, padx=5, pady=10)
+        tk.Button(root, text="Analyze Packets", command=self.analyze_packets).pack(padx=5, pady=10)
 
         # Log window to display import and analysis progress
         self.log_text = scrolledtext.ScrolledText(root, width=80, height=20, wrap=tk.WORD)
-        self.log_text.grid(row=4, column=0, columnspan=2, padx=5, pady=10)
-
-        # Display configuration for the current session
-        self.gui_log_message(f"Configuration File: {config_file}")
-        self.gui_log_message(f"PCAP File: {pcap_file}")
+        self.log_text.pack(padx=5, pady=10)
 
         # Display import information in the log text window and log file
-        self.gui_log_message(f"Packets imported: {len(packet_handler.packets)}, Import duration: {import_duration:.2f} seconds.")
+        self.gui_log_message(f"{len(packet_handler.packets)} packets imported from {self.config_file};"
+                             f" Import duration: {import_duration:.2f} seconds.")
 
     def analyze_packets(self):
         # Disable button during analysis
-        self.root.update()
-        self.disable_ui()
+        self.root.update_idletasks()  # Ensure button state is updated visually
+        threading.Thread(target=self.perform_analysis).start()
 
-        # Start analyzing packets in a separate thread
-        threading.Thread(target=self.analyze_packets_thread).start()
+    def perform_analysis(self):
+        # Redirect stdout to the log text widget
+        sys.stdout = WindowStream(self.log_text)
 
-    def analyze_packets_thread(self):
-        total_packets = len(self.packet_handler.packets)
-        current_packet_index = 0
+        try:
+            # Perform packet analysis
+            self.packet_handler.analyse()
+        except Exception as e:
+            # Print any exceptions to the redirected stdout
+            print(f"Error during analysis: {str(e)}")
+        finally:
+            # Restore sys.stdout
+            sys.stdout = sys.__stdout__
 
-        # Create analysed cache dir
-        analysed_cache_dir = self.packet_handler.cache_dir('analysed_cache')
-
-        # Check if all packets have been analysed by comparing cache files with expected packet count
-        cache_files = os.listdir(analysed_cache_dir)
-        if len(cache_files) == total_packets:
-            # All packets have been previously analysed, reset cache and perform full analysis
-            self.reset_cache(analysed_cache_dir)
-            self.gui_log_message("Resetting cache for full analysis...")
-        elif not cache_files:
-            # No files found, start new analysis
-            self.gui_log_message("Starting new analysis...")
-        else:
-            # Resume analysis from the last analysed packet index
-            current_packet_index = len(cache_files)
-            self.gui_log_message(f"Resuming analysis from packet {current_packet_index + 1}...")
-
-        while current_packet_index < total_packets:
-            # Analyze the next packet
-            packet = self.packet_handler.packets[current_packet_index]
-
-            # Get asn_rebuilt for packet type
-            pkt_asn = [msg.asn_rebuilt for msg in self.packet_handler.configured_msgs.values() if
-                       packet.type == msg.msg_name]
-
-            # If ASN for this message type has been found, proceed with analysis
-            if pkt_asn:
-                start_analysis_time = datetime.datetime.now()
-
-                # Analyze packet
-                packet.analyse_packet(pkt_asn[0])
-
-                end_analysis_time = datetime.datetime.now()
-                analysis_duration = (end_analysis_time - start_analysis_time).total_seconds()
-
-                # Log analysis progress
-                self.gui_log_message(f"{packet.type} packet {current_packet_index + 1}/{total_packets} analyzed. Analysis duration: {analysis_duration:.2f} seconds.")
-
-                # Cache the analysed packet
-                packet_cache_file = os.path.join(analysed_cache_dir , f'packet{current_packet_index + 1}.pkl')
-                with open(packet_cache_file, 'wb') as f:
-                    pickle.dump(packet, f, pickle.HIGHEST_PROTOCOL)
-
-            # Update progress bar
-            self.progressbar['value'] = current_packet_index + 1
-            current_packet_index += 1
-
-        # Re-enable UI after analysis is complete
-        self.enable_ui()
-        self.gui_log_message("Analysis Complete")
-
-    def reset_cache(self, cache_dir):
-        # Delete all files in the analysed cache directory
-        for file in os.listdir(cache_dir):
-            file_path = os.path.join(cache_dir, file)
-            os.remove(file_path)
+            # Enable UI after analysis
+            self.root.after(0, self.enable_ui)
 
     def disable_ui(self):
-        # Disable button during analysis
+        # Disable the Analyze Packets button
         for widget in self.root.winfo_children():
-            if isinstance(widget, tk.Button):
+            if isinstance(widget, tk.Button) and widget["text"] == "Analyze Packets":
                 widget.config(state=tk.DISABLED)
 
     def enable_ui(self):
-        # Enable button after analysis is complete
+        # Enable the Analyze Packets button
         for widget in self.root.winfo_children():
-            if isinstance(widget, tk.Button):
+            if isinstance(widget, tk.Button) and widget["text"] == "Analyze Packets":
                 widget.config(state=tk.NORMAL)
 
     def gui_log_message(self, message):
-        formatted_message = self.packet_handler.log_message(message)
+        # Get current date and time
+        timestamp = datetime.datetime.now().strftime("[%d-%m-%Y %H:%M:%S]")
+
+        # Format the log message with timestamp
+        formatted_message = f"{timestamp} {message}"
 
         # Append the message to the log text window
         self.log_text.insert(tk.END, formatted_message + "\n")
@@ -184,7 +146,7 @@ class PacketAnalyzerApp:
 
 
 if __name__ == "__main__":
-    # Launch the configuration window first
+    # Launch the configuration window
     config_root = tk.Tk()
     config_app = ConfigurationWindow(config_root)
     config_root.mainloop()
