@@ -188,6 +188,9 @@ class PacketAnalyser(object):
                 for file in cache_files:
                     os.remove(file)
 
+                # Reset cache_present
+                cache_present = [os.path.isfile(f) for f in cache_files]
+
             self.log_message('Starting packet analysis...')
             for idx, file in enumerate(cache_files):
 
