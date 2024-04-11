@@ -89,7 +89,15 @@ class PacketAnalyzerApp:
         tk.Label(root, text=f"Configuration File: {config_file}").pack(padx=5, pady=5)
         tk.Label(root, text=f"PCAP File: {pcap_file}").pack(padx=5, pady=5)
 
-        tk.Button(root, text="Analyze Packets", command=self.analyze_packets).pack(padx=5, pady=10)
+        # Frame to hold buttons
+        button_frame = tk.Frame(root)
+        button_frame.pack(padx=5, pady=10)
+
+        self.analyze_button = tk.Button(button_frame, text="Analyze Packets", command=self.analyze_packets)
+        self.analyze_button.pack(side=tk.LEFT, padx=5)
+
+        self.export_button = tk.Button(button_frame, text="Export Results", command=self.export_results, state=tk.DISABLED)
+        self.export_button.pack(side=tk.LEFT, padx=5)
 
         # Log window to display import and analysis progress
         self.log_text = scrolledtext.ScrolledText(root, width=80, height=20, wrap=tk.WORD)
@@ -101,16 +109,22 @@ class PacketAnalyzerApp:
 
     def analyze_packets(self):
         # Disable button during analysis
-        self.root.update_idletasks()  # Ensure button state is updated visually
+        self.analyze_button.config(state=tk.DISABLED)
         threading.Thread(target=self.perform_analysis).start()
 
     def perform_analysis(self):
+        # Disable Export button during analysis
+        self.export_button.config(state=tk.DISABLED)
+
         # Redirect stdout to the log text widget
         sys.stdout = WindowStream(self.log_text)
 
         try:
             # Perform packet analysis
             self.packet_handler.analyse()
+
+            # Enable Export button after analysis is complete
+            self.export_button.config(state=tk.NORMAL)
         except Exception as e:
             # Print any exceptions to the redirected stdout
             print(f"Error during analysis: {str(e)}")
@@ -121,17 +135,22 @@ class PacketAnalyzerApp:
             # Enable UI after analysis
             self.root.after(0, self.enable_ui)
 
-    def disable_ui(self):
-        # Disable the Analyze Packets button
-        for widget in self.root.winfo_children():
-            if isinstance(widget, tk.Button) and widget["text"] == "Analyze Packets":
-                widget.config(state=tk.DISABLED)
+    def export_results(self):
+        # Redirect stdout to the log text widget
+        sys.stdout = WindowStream(self.log_text)
+
+        # Prompt user to select directory for exporting results
+        export_dir = filedialog.askdirectory()
+        if export_dir:
+            # Call method to export results from PacketAnalyser
+            self.packet_handler.output_results(export_dir)
+
+        # Restore sys.stdout
+        sys.stdout = sys.__stdout__
 
     def enable_ui(self):
         # Enable the Analyze Packets button
-        for widget in self.root.winfo_children():
-            if isinstance(widget, tk.Button) and widget["text"] == "Analyze Packets":
-                widget.config(state=tk.NORMAL)
+        self.analyze_button.config(state=tk.NORMAL)
 
     def gui_log_message(self, message):
         # Get current date and time
