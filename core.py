@@ -43,6 +43,9 @@ class PacketAnalyser(object):
         # Create log file for current session
         self.log_file = create_log_file()
 
+        # Create state of current session
+        self.state = None
+
         # Display session information
         self.log_message(f'New session started with config: {config_location}')
 
@@ -143,6 +146,8 @@ class PacketAnalyser(object):
 
                     self.packets.append(pkt_object)
 
+            self.state = 'Imported file'
+
             # Generate packet type statistics
             for idx, packet in enumerate(self.packets):
                 if packet.type in self.packet_types.keys():
@@ -177,7 +182,7 @@ class PacketAnalyser(object):
         cache_present = [os.path.isfile(f) for f in cache_files]
 
         # Only if packets have been imported first
-        if self.packets:
+        if self.packets and self.state == 'Imported file':
             time_analysis_start = datetime.datetime.now()
 
             # Check if all packets are present in the analysed cache
@@ -246,9 +251,11 @@ class PacketAnalyser(object):
                             f'Packet {idx + 1}/{len(self.packets)} was not analysed '
                             f'({(time_packet_end - time_packet_start).total_seconds()} s) -- {pkt.type}.')
 
+            self.state = 'Analysis complete'
+
             time_analysis_end = datetime.datetime.now()
             self.log_message('Analysis complete.'
-                             f'Duration: {(time_analysis_end - time_analysis_start).total_seconds() / 60} min;'
+                             f' Duration: {(time_analysis_end - time_analysis_start).total_seconds() / 60} min;'
                              f' Packets analysed: {len(self.packets)}')
 
         else:
@@ -256,7 +263,7 @@ class PacketAnalyser(object):
 
     def output_results(self, output_location):
         # If summary is not empty (analysis has been run)
-        if not self.summary:
+        if self.state == 'Analysis complete':
             # Create folder in output_location based on session name (taken from log_file)
             output_path = os.path.join(output_location, os.path.basename(self.log_file))
             if not os.path.exists(output_path):
