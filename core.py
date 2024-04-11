@@ -43,7 +43,7 @@ class PacketAnalyser(object):
         # Create log file for current session
         self.log_file = create_log_file()
 
-        # Create state of current session
+        # Initiate state of current session
         self.state = None
 
         # Display session information
@@ -146,15 +146,8 @@ class PacketAnalyser(object):
 
                     self.packets.append(pkt_object)
 
+            # Update state
             self.state = 'Imported file'
-
-            # Generate packet type statistics
-            for idx, packet in enumerate(self.packets):
-                if packet.type in self.packet_types.keys():
-                    self.packet_types[packet.type]['freq'] += 1
-                    self.packet_types[packet.type]['idx'] = self.packet_types[packet.type]['idx'] + [idx + 1]
-                else:
-                    self.packet_types[packet.type] = {'freq': 1, 'idx': [idx + 1]}
 
             time_import_end = datetime.datetime.now()
             import_duration = (time_import_end - time_import_start).total_seconds()
@@ -251,7 +244,18 @@ class PacketAnalyser(object):
                             f'Packet {idx + 1}/{len(self.packets)} was not analysed '
                             f'({(time_packet_end - time_packet_start).total_seconds()} s) -- {pkt.type}.')
 
+            # Update state
             self.state = 'Analysis complete'
+
+            # Generate statistics
+            for idx, packet in enumerate(self.packets):
+                if packet.type in self.packet_types.keys():
+                    self.packet_types[packet.type]['freq'][packet.state] += 1
+                    self.packet_types[packet.type]['idx'] = self.packet_types[packet.type]['idx'] + [idx + 1]
+                else:
+                    self.packet_types[packet.type] = {'freq': {'Not analysed': 0, 'OK': 0, 'Warning': 0, 'Error': 0},
+                                                      'idx': [idx + 1]}
+                    self.packet_types[packet.type]['freq'][packet.state] += 1
 
             time_analysis_end = datetime.datetime.now()
             self.log_message('Analysis complete.'
@@ -265,7 +269,7 @@ class PacketAnalyser(object):
         # If summary is not empty (analysis has been run)
         if self.state == 'Analysis complete':
             # Create folder in output_location based on session name (taken from log_file)
-            output_path = os.path.join(output_location, os.path.basename(self.log_file))
+            output_path = os.path.join(output_location, os.path.splitext(os.path.basename(self.log_file))[0])
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
 
@@ -293,3 +297,5 @@ class PacketAnalyser(object):
                 with open(os.path.join(packets_path, f'packet{idx + 1}.json'), 'w') as f:
                     json.dump(json_packet, f, indent=4, sort_keys=False)
 
+            # Add a message to the log
+            self.log_message(f'Results successfully exported to: {output_path}')
