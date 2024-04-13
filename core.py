@@ -26,11 +26,11 @@ class PacketAnalyser(object):
 
         # Open config
         with open(config_location, 'r') as f:
-            config = json.load(f)
+            self.config = json.load(f)
 
         # Establish ItsMessage object for each message type configured
         self.configured_msgs = {key: ItsMessage(asn_files=value['asnFiles'], msg_name=value['msgName'])
-                                for key, value in config['msgPorts'].items()}
+                                for key, value in self.config['msgPorts'].items()}
 
         # Establish input_file location
         self.input_file = None
@@ -99,16 +99,13 @@ class PacketAnalyser(object):
             """
             Distinguish between C-ITS, other packets, and malformed packets and return packet data and packet type.
             """
-            if 'ITS' in str(pkt.layers):
-                if 'MALFORMED' in str(pkt.layers):
-                    return None, 'Malformed packet'
+            if 'ITS' == pkt.highest_layer:
+                try:
+                    msg_object = self.configured_msgs.get(pkt.btpb.dstport)
+                except KeyError:
+                    return None, 'Unknown C-ITS message'
                 else:
-                    try:
-                        msg_object = self.configured_msgs.get(pkt.btpb.dstport)
-                    except KeyError:
-                        return None, 'Unknown C-ITS message'
-                    else:
-                        return msg_object.decode(bytes.fromhex(pkt.its_raw.value)), msg_object.msg_name
+                    return msg_object.decode(bytes.fromhex(pkt.its_raw.value)), msg_object.msg_name
             else:
                 return None, 'Non-C-ITS packet'
 
@@ -140,7 +137,7 @@ class PacketAnalyser(object):
                 # If packet is not in cache dir, import and save it
                 else:
                     pkt_content, pkt_type = import_pkt()
-                    pkt_object = Packet(msg_type=pkt_type, content=pkt_content)
+                    pkt_object = Packet(msg_type=pkt_type, content=pkt_content, arrival_time=pkt.sniff_time)
 
                     self.__cache_action(packet_file, 'w', pkt_object)
 
