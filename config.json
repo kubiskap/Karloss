@@ -82,5 +82,19 @@
 				"./asn/ts/SSEM-PDU-Descriptions.asn"
 			]
 		}
+	},
+	"mapData": {
+		"CAM": {
+			"stationID": "CAM.header.stationID",
+			"stationType": "CAM.cam.camParameters.basicContainer.stationType",
+			"coordinates": ["CAM.cam.camParameters.basicContainer.referencePosition.latitude", "CAM.cam.camParameters.basicContainer.referencePosition.longitude"],
+			"speed": "CAM.cam.camParameters.highFrequencyContainer.speed.speedValue"
+		},
+		"DENM": {
+			"stationID": "DENM.header.stationID",
+			"stationType": "DENM.denm.management.stationType",
+			"coordinates": ["DENM.denm.manaement.eventPosition.latitude", "DENM.denm.manaement.eventPosition.longitude"],
+			"speed": null
+		}
 	}
 }
