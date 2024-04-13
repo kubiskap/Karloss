@@ -147,7 +147,7 @@ class Packet(object):
 
                     case 'ENUMERATED':
                         """
-                        Checks whether or not the value is in defined values.
+                        Checks whether or not the value is in defined values or is 'unavailable' or 'outOfRange'.
                         """
                         if 'values' in asn.keys():
                             value_list = []
@@ -160,6 +160,8 @@ class Packet(object):
                                 problems.append(Problem(1, 'Value not in defined values.'))
                             elif value == 'unavailable':
                                 problems.append(Problem(0, 'Value is unavailable.'))
+                            elif value == 'outOfRange':
+                                problems.append(Problem(0, 'Value is out of range.'))
 
                     case 'IA5String' | 'NumericString' | 'SEQUENCE OF':
                         """
