@@ -5,7 +5,7 @@ from msg import ItsMessage
 
 
 class Packet(object):
-    def __init__(self, msg_type, content):
+    def __init__(self, msg_type, content, arrival_time):
         def process_packet(input_dict):
             """
             Internal method to convert the raw decoded packet into a true dictionary.
@@ -51,6 +51,8 @@ class Packet(object):
                 else:
                     output_dict[key] = value
             return output_dict
+
+        self.arrival_time = arrival_time
 
         self.data = process_packet(content) if isinstance(content, dict) else content
         self.type = msg_type
