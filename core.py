@@ -99,7 +99,7 @@ class PacketAnalyser(object):
             """
             Distinguish between C-ITS, other packets, and malformed packets and return packet data and packet type.
             """
-            if 'ITS' == pkt.highest_layer:
+            if 'ITS' in str(pkt.layers):
                 try:
                     msg_object = self.configured_msgs.get(pkt.btpb.dstport)
                 except KeyError:
