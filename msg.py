@@ -4,7 +4,9 @@ from collections import ChainMap
 
 class ItsMessage(object):
     """
-    ETSI ITS message
+    A generic ITS message class.
+    Main purpose is to decode encoded data using asn1tools package and to rebuild the decoded asn dictionary to similar
+    structure of the final decoded message nested dictionary.
     """
 
     def __init__(
@@ -17,11 +19,15 @@ class ItsMessage(object):
         self.asn_rebuilt = self.rebuild_asn(msg_name)
 
     def decode(self, encoded, encoding_type='uper'):
+        """
+        Method used to decode extracted encoded data from pyshark using asn1tools and ASN.1 specification.
+        """
+
         compiled_dict = asn1tools.compile_dict(self.its_dictionary, encoding_type)
         try:
             return {self.msg_name: compiled_dict.decode(self.msg_name, encoded, check_constraints=False)}
         except asn1tools.DecodeError or asn1tools.ConstraintsError as ASNerror:
-            return f'{repr(ASNerror).split('(')[0]}({str(ASNerror)})'
+            return {self.ms_name: f'{repr(ASNerror).split('(')[0]}({str(ASNerror)})'}
 
     def rebuild_asn(self, parameter_name: str, parameter_path=None) -> dict:
         if parameter_path is None:
