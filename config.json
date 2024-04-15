@@ -87,13 +87,15 @@
 		"CAM": {
 			"stationID": "CAM.header.stationID",
 			"stationType": "CAM.cam.camParameters.basicContainer.stationType",
-			"coordinates": ["CAM.cam.camParameters.basicContainer.referencePosition.latitude", "CAM.cam.camParameters.basicContainer.referencePosition.longitude"],
-			"speed": "CAM.cam.camParameters.highFrequencyContainer.speed.speedValue"
+			"latitude": "CAM.cam.camParameters.basicContainer.referencePosition.latitude", 
+			"longitude": "CAM.cam.camParameters.basicContainer.referencePosition.longitude",
+			"speed": "CAM.cam.camParameters.highFrequencyContainer.basicVehicleContainerHighFrequency.speed.speedValue"
 		},
 		"DENM": {
 			"stationID": "DENM.header.stationID",
 			"stationType": "DENM.denm.management.stationType",
-			"coordinates": ["DENM.denm.manaement.eventPosition.latitude", "DENM.denm.manaement.eventPosition.longitude"],
+			"latitude": "DENM.denm.management.eventPosition.latitude",
+			"longitude": "DENM.denm.management.eventPosition.longitude",
 			"speed": null
 		}
 	}
