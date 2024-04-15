@@ -27,7 +27,7 @@ class ItsMessage(object):
         try:
             return {self.msg_name: compiled_dict.decode(self.msg_name, encoded, check_constraints=False)}
         except asn1tools.DecodeError or asn1tools.ConstraintsError as ASNerror:
-            return {self.ms_name: f'{repr(ASNerror).split('(')[0]}({str(ASNerror)})'}
+            return {self.msg_name: f'{repr(ASNerror).split('(')[0]}({str(ASNerror)})'}
 
     def rebuild_asn(self, parameter_name: str, parameter_path=None) -> dict:
         if parameter_path is None:
