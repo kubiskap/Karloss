@@ -366,7 +366,35 @@ class Packet(object):
                     matches = jsonpath_ng.parse("$." + ".".join(path)).find(self.data_analysed)
                     matches[0].full_path.update(self.data_analysed, value_to_set)
 
+            # There was a problem during decoding, in this case the data value type will be a string
+            elif isinstance(self.data, str):
+                # Set state to error
+                self.state = 'Error'
+
+                # Split the string into several substrings, so that we can provide accurate output
+                splitstring = self.data.split('(')
+                error_type = splitstring[0]
+
+                split_splitstring = splitstring[1].split(': ')
+                faulty_parameter_path = split_splitstring[0]
+                problem_description = split_splitstring[1]
+
+                # Convert path for summary
+                path_converted, asn_path = convert_item_path(faulty_parameter_path.split('.'))
+                summary_key = '.'.join(path_converted)
+
+                # Add to summary
+                if summary_key in self.pkt_summary:
+                    self.pkt_summary[summary_key][2] += 1
+                else:
+                    self.pkt_summary[summary_key] = [0, 0, 1]
+
+                # Add to pkt_problems
+                self.pkt_problems[faulty_parameter_path] = {'Warnings': None,
+                                                            'Errors': [f'{error_type}: {problem_description}']}
+
             else:
-                print('Nothing to analyse in this packet.')
+                raise TypeError(f'Value data type not dict or string.')
+
         else:
             print('Packet has already been analysed.')
