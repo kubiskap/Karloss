@@ -21,8 +21,9 @@ class Map(object):
 
             return value
 
-        # Isolate all packets matching selected packet types
-        selected_packets = [packet for packet in self.session_object.packets if packet.type in self.packet_types]
+        # Isolate all packets matching selected packet types and with data of type dictionary
+        selected_packets = [packet for packet in self.session_object.packets if packet.type in self.packet_types
+                            and isinstance(packet.data, dict)]
 
         # Raise an exception if requested packet type is not configured in map_data
         for packet_type in self.packet_types:
