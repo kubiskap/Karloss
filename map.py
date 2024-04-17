@@ -41,12 +41,32 @@ class Map(object):
 
             # For each parameter configured, find the value under this path
             for key, path in pkt_config.items():
-                if (path is not None) and (path not in packet.pkt_problems.keys()) or (
-                        'Value not in named-numbers.' in packet.pkt_problems.get(path, {'Errors': [], 'Warnings': []})[
-                    'Warnings']):
+
+                # If there is path value configured
+                if path is not None:
+                    # Get content of current packet under this path
                     matches = jsonpath_ng.parse("$." + path).find(packet.data)
-                    pkt_value[key] = unit_conversion(matches[0].value)
-                elif path is None:
+
+                    # If anything is found in the packet
+                    if matches:
+
+                        # If there are no problems with the parameter or the only problem is with named-numbers, proceed
+                        if (path not in packet.pkt_problems.keys()) or (
+                                'Value not in named-numbers.' in
+                                packet.pkt_problems.get(path, {'Errors': [], 'Warnings': []})['Warnings']):
+
+                            pkt_value[key] = unit_conversion(matches[0].value)
+
+                        # If there are problems, do not add the packet
+                        else:
+                            break
+
+                    # If the parameter was not found, do not add the packet
+                    else:
+                        break
+
+                # If parameter has no defined path, set the value to None
+                else:
                     pkt_value[key] = None
 
             # Append the map packet data to the array
@@ -105,9 +125,10 @@ class Map(object):
 
         for packet in self.map_data:
             lat, lon = packet.get('latitude', 0), packet.get('longitude', 0)
+
             popup_text = (f'<b>Type:</b> {packet.get("type", "N/A")}<br>'
                           f'<b>Arrival time:</b> {packet.get("arrivalTime", "N/A")}<br>'
-                          f'<b>Station ID:</b> {packet.get("stationID", "N/A")}'
+                          f'<b>Station ID:</b> {packet.get("stationID", "N/A")}<br>'
                           f'<b>Speed:</b> {packet.get("speed", "N/A")} km/h')
 
             folium.Marker([lat, lon], popup=popup_text, icon=folium.Icon(color=layers[packet['type']][1])).add_to(
