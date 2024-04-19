@@ -155,7 +155,7 @@ class PacketAnalyser(object):
             # Explicitly close the capture to release resources and terminate event loop
             pcap.close()
 
-    def analyse(self):
+    def analyse(self, reset_cache=True):
 
         def add_pkt_summary():
             default_val = [0, 0, 0]
@@ -177,14 +177,17 @@ class PacketAnalyser(object):
 
             # Check if all packets are present in the analysed cache
             if all(cache_present):
-                self.log_message('All packets present in analysed cache. Resetting cache for repeated analysis...')
+                self.log_message('All packets present in analysed cache.')
 
-                # Delete all files in the analysed cache directory
-                for file in cache_files:
-                    os.remove(file)
-
-                # Reset cache_present
-                cache_present = [os.path.isfile(f) for f in cache_files]
+                if reset_cache:
+                    self.log_message('Resetting cache for repeated analysis...')
+                    # Delete all files in the analysed cache directory
+                    for file in cache_files:
+                        os.remove(file)
+                    # Reset cache_present
+                    cache_present = [os.path.isfile(f) for f in cache_files]
+                else:
+                    self.log_message('The analysed packet cache has been kept back. Importing results...')
 
             self.log_message('Starting packet analysis...')
             for idx, file in enumerate(cache_files):
