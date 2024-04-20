@@ -136,16 +136,29 @@ class Packet(object):
                             if not all(in_range):
                                 problems.append(Problem(1, 'Value is out of range.'))
                         if 'named-numbers' in asn.keys():
-                            if 'unavailable' in asn['named-numbers'].keys() and value == asn['named-numbers']['unavailable']:
-                                    problems.append(Problem(0, 'Value is unavailable.'))
-                            elif 'outOfRange' in asn['named-numbers'].keys() and value == asn['named-numbers']['outOfRange']:
-                                    problems.append(Problem(1, 'Value is out of range.'))
-                            elif value not in asn['named-numbers'].values():
-                                problems.append(Problem(0, 'Value not in named-numbers.'))
-                            else:
+
+                            # Try to determine if named-numbers try to provide only the unit of value, in which case
+                            # the program will not add a warning if value is not in named-numbers
+                            # This should cover most cases, but not all
+                            numbers = ('one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+                                       'twenty', 'thirty', 'fourty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety',
+                                       'hundred')
+                            named_num_is_unit = []
+                            for named_num in asn['named-numbers'].keys():
+                                named_num_is_unit.append(named_num.startswith(numbers))
+
+                            if value in asn['named-numbers'].values():
                                 value_extended = [value_extended,
                                                   list(asn['named-numbers'].keys())[
                                                       list(asn['named-numbers'].values()).index(value)]]
+
+                                if value == asn['named-numbers'].get('unavailable'):
+                                    problems.append(Problem(0, 'Value is unavailable.'))
+                                elif value == asn['named-numbers'].get('outOfRange'):
+                                    problems.append(Problem(1, 'Value is out of range.'))
+
+                            elif not any(named_num_is_unit):
+                                problems.append(Problem(0, 'Value not in named-numbers.'))
 
                     case 'ENUMERATED':
                         """
@@ -284,7 +297,8 @@ class Packet(object):
                 # Create a key in pkt_problems for this specific parameter
                 self.pkt_problems[problems_key] = {'Warnings': None, 'Errors': None}
 
-                self.pkt_problems[problems_key]['Warnings'] = [problem.desc for problem in problems if problem.flag == 0]
+                self.pkt_problems[problems_key]['Warnings'] = [problem.desc for problem in problems if
+                                                               problem.flag == 0]
                 self.pkt_problems[problems_key]['Errors'] = [problem.desc for problem in problems if problem.flag == 1]
 
         def evaluate_parameter():
