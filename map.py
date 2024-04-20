@@ -107,7 +107,7 @@ class Map(object):
 
             # Color legend text based on assigned color
             lgd_txt = f'<span style="color: {color};">{packet_type}</span>'
-            layers[packet_type] = (folium.FeatureGroup(name=lgd_txt, overlay=True, control=True, show=False), color)
+            layers[packet_type] = (MarkerCluster(name=lgd_txt, overlay=True, control=True, show=False), color)
             layers[packet_type][0].add_to(self.map)
             self.map.add_child(layers[packet_type][0])
 
