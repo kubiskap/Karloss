@@ -25,8 +25,11 @@ class PacketAnalyser(object):
             return log_file_name
 
         # Open config
-        with open(config_location, 'r') as f:
-            self.config = json.load(f)
+        try:
+            with open(config_location, 'r') as f:
+                self.config = json.load(f)
+        except:
+            raise Exception('Config syntax invalid. Make sure your json config has valid syntax.')
 
         # Establish ItsMessage object for each message type configured
         self.configured_msgs = {key: ItsMessage(asn_files=value['asnFiles'], msg_name=value['msgName'])
