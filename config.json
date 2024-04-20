@@ -95,8 +95,7 @@
 			"stationID": "DENM.header.stationID",
 			"stationType": "DENM.denm.management.stationType",
 			"latitude": "DENM.denm.management.eventPosition.latitude",
-			"longitude": "DENM.denm.management.eventPosition.longitude",
-			"speed": null
+			"longitude": "DENM.denm.management.eventPosition.longitude"
 		}
 	}
 }
