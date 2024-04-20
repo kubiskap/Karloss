@@ -14,8 +14,8 @@ class Map(object):
     def __prepare_data(self):
         def unit_conversion(value):
             match key:
-                case 'speedValue':
-                    value = value * 0.036
+                case 'speed':
+                    value = round(value * 0.036, 2)
                 case 'latitude' | 'longitude':
                     value = value / 10000000
 
