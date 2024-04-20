@@ -1,5 +1,6 @@
 import folium
 from folium.plugins import MarkerCluster
+from folium.plugins import GroupedLayerControl
 import jsonpath_ng
 import random
 
@@ -74,12 +75,10 @@ class Map(object):
 
         return map_data
 
-    def create(self):
+    def create(self, group_markers=True):
         def assign_color(used=[]):
-            defined = ['red', 'blue', 'green', 'purple', 'orange', 'darkred',
-                       'beige', 'darkblue', 'darkgreen', 'cadetblue',
-                       'pink', 'lightblue', 'lightgreen',
-                       'gray', 'black', 'lightgray']  # available colors for both Folium and CSS
+            defined = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'darkblue', 'darkgreen', 'cadetblue',
+                       'pink', 'lightblue', 'lightgreen', 'gray']
             if set(defined) != set(used):
                 available_colors = [color for color in defined if color not in used]
                 color = available_colors[random.randint(0, len(available_colors) - 1)]
@@ -107,7 +106,12 @@ class Map(object):
 
             # Color legend text based on assigned color
             lgd_txt = f'<span style="color: {color};">{packet_type}</span>'
-            layers[packet_type] = (MarkerCluster(name=lgd_txt, overlay=True, control=True, show=False), color)
+
+            if group_markers:
+                layers[packet_type] = (MarkerCluster(name=lgd_txt, overlay=True, control=True, show=False), color)
+            else:
+                layers[packet_type] = (folium.FeatureGroup(name=lgd_txt, overlay=True, control=True, show=False), color)
+
             layers[packet_type][0].add_to(self.map)
             self.map.add_child(layers[packet_type][0])
 
@@ -117,9 +121,8 @@ class Map(object):
                     stationIDs.append(packet['stationID'])
 
             for stationID in stationIDs:
-                stid_lgd_txt = f'<span style="color: {color};">{stationID}</span>'
                 stationID_layers[f'{packet_type}_{stationID}'] = folium.plugins.FeatureGroupSubGroup(
-                    layers[packet_type][0], name=stid_lgd_txt, show=False)
+                    layers[packet_type][0], name=stationID, show=True)
                 stationID_layers[f'{packet_type}_{stationID}'].add_to(self.map)
                 self.map.add_child(stationID_layers[f'{packet_type}_{stationID}'])
 
@@ -135,3 +138,14 @@ class Map(object):
                 stationID_layers[f'{packet['type']}_{packet['stationID']}'])
 
         folium.LayerControl(collapsed=False).add_to(self.map)
+
+        # Add GroupedLayerControl
+        for packet_type in self.packet_types:
+            color = layers[packet_type][1]
+            name = f'<span style="color: {color};">{packet_type}</span>_stationID:'
+            layer_list = [layer for key, layer in stationID_layers.items() if key.startswith(packet_type)]
+            GroupedLayerControl(
+                groups={name: layer_list},
+                collapsed=False,
+                exclusive_groups=False
+            ).add_to(self.map)
