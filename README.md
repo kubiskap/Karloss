@@ -48,34 +48,34 @@ Now you should be able to import the main script:
 from core import PacketAnalyser
 ```
 
-To start a new session of the script, create a class object of `PacketAnalyser`:
-```
-karloss = PacketAnalyser(config_location='PATH\\TO\\CONFIG.JSON')
-```
-If you don't want to specify your custom config location and want to use the file included in the root of the script, just call `karloss = PacketAnalyser()`.
+1. To start a new session of the script, create a class object of `PacketAnalyser`:
+   ```
+   karloss = PacketAnalyser(config_location='PATH\\TO\\CONFIG.JSON')
+   ```
+   If you don't want to specify your custom config location and want to use the file included in the root of the script, just call `karloss = PacketAnalyser()`.
 
-To import the pcap file, call method `import_file()` of the object:
-```
-karloss.import_file(input_file='PATH\\TO\\PCAP\\FILE')
-```
+2. To import the pcap file, call method `import_file()` of the object:
+   ```
+   karloss.import_file(input_file='PATH\\TO\\PCAP\\FILE')
+   ```
 
-Finally, call the `analyse()` method to launch the analysis:
-```
-karloss.analyse()
-```
+4. Call the `analyse()` method to launch the analysis:
+   ```
+   karloss.analyse()
+   ```
 
-To output the results of a successful analysis, call the `output_results()` method:
-```
-karloss.output_results(output_location='PATH\\TO\\OUTPUT\\DIRECTORY')
-```
+5. To output the results of a successful analysis, call the `output_results()` method:
+   ```
+   karloss.output_results(output_location='PATH\\TO\\OUTPUT\\DIRECTORY')
+   ```
 
-To plot a map using `folium`, call the `plot_map()` method:
-```
-karloss.plot_map(packet_types=['LIST', 'OF', 'CONFIGURED', 'MESSAGES'], output_location='PATH\\TO\\OUTPUT\\DIRECTORY', group_markers=True)
-```
-__Note:__ 
-* For each packet type specified under the `packet_types` parameter, there must be an entry in the config `mapData` section, otherwise the method will throw an exception. This config contains paths of the parameters needed for plotting the data points into the map. 
-* The `group_markers` parameter determines whether the datapoints will be grouped under Folium's `MarkerCluster`. This significantly improves browseability of the map, as the CPU does not have to generate thousands of datapoints in far zoom, though is worse for visual data representation.
+6. To plot a map using `folium`, call the `plot_map()` method:
+   ```
+   karloss.plot_map(packet_types=['LIST', 'OF', 'CONFIGURED', 'MESSAGES'], output_location='PATH\\TO\\OUTPUT\\DIRECTORY', group_markers=True)
+   ```
+   __Note:__ 
+   * For each packet type specified under the `packet_types` parameter, there must be an entry in the config `mapData` section, otherwise the method will throw an exception. This config contains paths of the parameters needed for plotting the data points into the map. 
+   * The `group_markers` parameter determines whether the datapoints will be grouped under Folium's `MarkerCluster`. This significantly improves browseability of the map, as the CPU does not have to generate thousands of datapoints in far zoom, though is worse for visual data representation.
 
 The core script enables logging each session into the `log` directory in the script root. Cache is also implemented, meaning that for repeated analysis of the same file, packets are imported from cache. If the analysis were to be interrupted, the script should pick up where it left off after launching the analysis again for the same file.
 
