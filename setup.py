@@ -11,7 +11,7 @@ setup(
    long_description=long_description,
    author='Petr Miloslav Kubiska',
    author_email='kubispe3@fd.cvut.cz',
-   url="http://www.foopackage.example/",
+   url="https://github.com/kubiskap/Karloss",
    packages=['Karloss'],  #same as name
    install_requires=['pyshark', 'asn1tools', 'jsonpath_ng', 'tk', 'folium']  # external packages as dependencies
 )

@@ -63,7 +63,7 @@ class PacketAnalyser(object):
                     cache_object = pickle.load(f)
                 return cache_object
 
-    def cache_dir(self, subdir):
+    def __cache_dir(self, subdir):
         # Get the name of the input file without the path and extension
         subfolder_name = os.path.basename(self.input_file)
 
@@ -123,7 +123,7 @@ class PacketAnalyser(object):
             pcap = pyshark.FileCapture(input_file, include_raw=True, use_json=True)
 
             # Create cache directory
-            import_cache_dir = self.cache_dir('import_cache')
+            import_cache_dir = self.__cache_dir('import_cache')
 
             time_import_start = datetime.datetime.now()
 
@@ -168,7 +168,7 @@ class PacketAnalyser(object):
             self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in set(ps) | set(s)}
 
         # Create analysed cache dir
-        analysed_cache_dir = self.cache_dir('analysed_cache')
+        analysed_cache_dir = self.__cache_dir('analysed_cache')
 
         # List all files that should be in cache, list if each of the files is present in cache
         cache_files = [os.path.join(analysed_cache_dir, f'packet{idx + 1}.pkl') for idx, pkt in enumerate(self.packets)]
