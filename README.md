@@ -1,7 +1,7 @@
 # Karloss_v2
 
 ## Introduction
-This Python script is created as partt of my bachelor thesis. It will be used as a tool in the process of verifying C-ITS hardware developed by various manufacturers, whether the C-ITS messages meet the standard or not.
+This Python script is created as part of my bachelor thesis. It will be used as a tool in the process of verifying C-ITS hardware developed by various manufacturers, whether the C-ITS messages meet the standard or not.
 
 ### Requirements:
 * Python version ≥3.10,
