@@ -12,7 +12,7 @@ This Python script is created as part of my bachelor thesis. It will be used as 
 ## How it works
 The data input into the software is a set of packets captured and stored in a `.pcap` file.
 
-`Pyshark`, a package integrating Wireshark into Python, is used to get the raw encoded data. The `asn1tools` package is used to decode the raw data using ASN.1 files, whose location is specified in `config.json` for each type of message configured.
+`Pyshark`, a package integrating Wireshark into Python, is used to extract the raw encoded data. The `asn1tools` package is used to decode the raw data using ASN.1 files, whose location is specified in `config.json` for each type of message configured.
 
 Additionally, the `asn1tools` package is used to compile the ASN.1 files into a dictionary. A custom recursive function is used to rebuild this dictionary data into a nested dictionary that resembles the structure of each C-ITS data packet.
 
