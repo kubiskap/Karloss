@@ -69,12 +69,20 @@ To output the results of a successful analysis, call the `output_results()` meth
 karloss.output_results(output_location='PATH\\TO\\OUTPUT\\DIRECTORY')
 ```
 
+To plot a map using `folium`, call the `plot_map()` method:
+```
+karloss.plot_map(packet_types=['LIST', 'OF', 'CONFIGURED', 'MESSAGES'], output_location='PATH\\TO\\OUTPUT\\DIRECTORY', group_markers=True)
+```
+__Note:__ 
+* For each packet type specified under the `packet_types` parameter, there must be an entry in the config `mapData` section, otherwise the method will throw an exception. This config contains paths of the parameters needed for plotting the data points into the map. 
+* The `group_markers` parameter determines whether the datapoints will be grouped under Folium's `MarkerCluster`. This significantly improves browseability of the map, as the CPU does not have to generate thousands of datapoints in far zoom, though is worse for visual data representation.
+
 The core script enables logging each session into the `log` directory in the script root. Cache is also implemented, meaning that for repeated analysis of the same file, packets are imported from cache. If the analysis were to be interrupted, the script should pick up where it left off after launching the analysis again for the same file.
 
 ### GUI
-The usage of the GUI is fairly straightforward, but some features are not yet implemented. You should be able to just launch the `gui.py` file using console:
+The usage of the GUI is fairly straightforward, although some features are not yet implemented. You should be able to just launch the `gui.py` file using console:
 ```
 python C:\\PATH\\TO\\SCRIPT\\ROOT\\gui.py
 ```
 
-In the first window, you will be prompted to select the `config.json` file and the pcap file. After clicking `Accept Config`, a window with a text box will pop up. In this textbox, all of the output of CLI is provided. Click the `Analyse` button to start analysis. After completion, you can click the `Output Results` button and select the output directory.
+In the first window, you will be prompted to select the `config.json` file and the pcap file. After clicking `Accept Config`, a window with a text box will pop up. In this textbox, all of the output of CLI is provided. Click the `Analyse` button to start analysis. After completion, you can click the `Export Results` button and select the output directory.
