@@ -7,6 +7,7 @@ from operator import add
 
 from msg import ItsMessage
 from packet import Packet
+from map import Map
 
 
 class PacketAnalyser(object):
@@ -302,3 +303,18 @@ class PacketAnalyser(object):
 
             # Add a message to the log
             self.log_message(f'Results successfully exported to: {output_path}')
+
+    def plot_map(self, packet_types, output_location, group_markers=True):
+        if self.state == 'Analysis complete':
+            self.log_message('Plotting map...')
+
+            # Initiate map object
+            map_object = Map(self, packet_types)
+
+            # Create map
+            map_object.create(group_markers)
+
+            # Save map
+            map_object.map.save(output_location)
+
+            self.log_message(f'Map successfully plotted to {output_location}')
