@@ -4,8 +4,8 @@
 This Python script is created as partt of my bachelor thesis. It will be used as a tool in the process of verifying C-ITS hardware developed by various manufacturers, whether the C-ITS messages meet the standard or not.
 
 ### Requirements:
-* Python version >3.10,
-* tshark installed,
+* Python version ≥3.10,
+* tshark (Wireshark) installation,
 * Python packages:
   * `asn1tools`, `pyshark`, `jsonpath_ng`, `tk` (GUI), `folium` (map)
 
