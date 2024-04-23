@@ -50,7 +50,7 @@ from core import PacketAnalyser
 
 To start a new session of the script, create a class object of `PacketAnalyser`:
 ```
-karloss = PacketAnalyser(config_location='PATH\\TO\\CONFIG.JSON'
+karloss = PacketAnalyser(config_location='PATH\\TO\\CONFIG.JSON')
 ```
 If you don't want to specify your custom config location and want to use the file included in the root of the script, just call `karloss = PacketAnalyser()`.
 
