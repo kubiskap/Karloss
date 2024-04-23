@@ -48,6 +48,8 @@ Now you should be able to import the main script:
 from core import PacketAnalyser
 ```
 
+__Proceed as follows:__
+
 1. To start a new session of the script, create a class object of `PacketAnalyser`:
    ```
    karloss = PacketAnalyser(config_location='PATH\\TO\\CONFIG.JSON')
