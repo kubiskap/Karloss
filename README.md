@@ -1,18 +1,18 @@
 # Karloss_v2
 
 ## Introduction
-This Python script is created as partt of my bachelor thesis. It will be used as a tool in the process of verifying C-ITS hardware developed by various manufacturers, whether the C-ITS messages meet the standard or not.
+This Python script is created as part of my bachelor thesis. It will be used as a tool in the process of verifying C-ITS hardware developed by various manufacturers, whether the C-ITS messages meet the standard or not.
 
 ### Requirements:
-* Python version >3.10,
-* tshark installed,
+* Python version ≥3.10,
+* tshark (Wireshark) installation,
 * Python packages:
   * `asn1tools`, `pyshark`, `jsonpath_ng`, `tk` (GUI), `folium` (map)
 
 ## How it works
 The data input into the software is a set of packets captured and stored in a `.pcap` file.
 
-`Pyshark`, a package integrating Wireshark into Python, is used to get the raw encoded data. The `asn1tools` package is used to decode the raw data using ASN.1 files, whose location is specified in `config.json` for each type of message configured.
+`Pyshark`, a package integrating Wireshark into Python, is used to extract the raw encoded data. The `asn1tools` package is used to decode the raw data using ASN.1 files, whose location is specified in `config.json` for each type of message configured.
 
 Additionally, the `asn1tools` package is used to compile the ASN.1 files into a dictionary. A custom recursive function is used to rebuild this dictionary data into a nested dictionary that resembles the structure of each C-ITS data packet.
 
@@ -48,33 +48,43 @@ Now you should be able to import the main script:
 from core import PacketAnalyser
 ```
 
-To start a new session of the script, create a class object of `PacketAnalyser`:
-```
-karloss = PacketAnalyser(config_location='PATH\\TO\\CONFIG.JSON')
-```
-If you don't want to specify your custom config location and want to use the file included in the root of the script, just call `karloss = PacketAnalyser()`.
+__Proceed as follows:__
 
-To import the pcap file, call method `import_file()` of the object:
-```
-karloss.import_file(input_file='PATH\\TO\\PCAP\\FILE')
-```
+1. To start a new session of the script, create a class object of `PacketAnalyser`:
+   ```
+   karloss = PacketAnalyser(config_location='PATH\\TO\\CONFIG.JSON')
+   ```
+   If you don't want to specify your custom config location and want to use the file included in the root of the script, just call `karloss = PacketAnalyser()`.
 
-Finally, call the `analyse()` method to launch the analysis:
-```
-karloss.analyse()
-```
+2. To import the pcap file, call method `import_file()` of the object:
+   ```
+   karloss.import_file(input_file='PATH\\TO\\PCAP\\FILE')
+   ```
 
-To output the results of a successful analysis, call the `output_results()` method:
-```
-karloss.output_results(output_location='PATH\\TO\\OUTPUT\\DIRECTORY')
-```
+4. Call the `analyse()` method to launch the analysis:
+   ```
+   karloss.analyse()
+   ```
+
+5. To output the results of a successful analysis, call the `output_results()` method:
+   ```
+   karloss.output_results(output_location='PATH\\TO\\OUTPUT\\DIRECTORY')
+   ```
+
+6. To plot a map using `folium`, call the `plot_map()` method:
+   ```
+   karloss.plot_map(packet_types=['LIST', 'OF', 'CONFIGURED', 'MESSAGES'], output_location='PATH\\TO\\OUTPUT\\DIRECTORY', group_markers=True)
+   ```
+   __Note:__ 
+   * For each packet type specified under the `packet_types` parameter, there must be an entry in the config `mapData` section, otherwise the method will throw an exception. This config contains paths of the parameters needed for plotting the data points into the map. 
+   * The `group_markers` parameter determines whether the datapoints will be grouped under Folium's `MarkerCluster`. This significantly improves browseability of the map, as the CPU does not have to generate thousands of datapoints in far zoom, though is worse for visual data representation.
 
 The core script enables logging each session into the `log` directory in the script root. Cache is also implemented, meaning that for repeated analysis of the same file, packets are imported from cache. If the analysis were to be interrupted, the script should pick up where it left off after launching the analysis again for the same file.
 
 ### GUI
-The usage of the GUI is fairly straightforward, but some features are not yet implemented. You should be able to just launch the `gui.py` file using console:
+The usage of the GUI is fairly straightforward, although some features are not yet implemented. You should be able to just launch the `gui.py` file using console:
 ```
 python C:\\PATH\\TO\\SCRIPT\\ROOT\\gui.py
 ```
 
-In the first window, you will be prompted to select the `config.json` file and the pcap file. After clicking `Accept Config`, a window with a text box will pop up. In this textbox, all of the output of CLI is provided. Click the `Analyse` button to start analysis. After completion, you can click the `Output Results` button and select the output directory.
+In the first window, you will be prompted to select the `config.json` file and the pcap file. After clicking `Accept Config`, a window with a text box will pop up. In this textbox, all of the output of CLI is provided. Click the `Analyse` button to start analysis. After completion, you can click the `Export Results` button and select the output directory.
