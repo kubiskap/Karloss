@@ -237,7 +237,7 @@ class PacketAnalyser(object):
 
                         self.log_message(
                             f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
-                            f'{(time_packet_end - time_packet_start).total_seconds()} seconds.')
+                            f'{(time_packet_end - time_packet_start).total_seconds():.1f} seconds.')
                     else:
                         time_packet_end = datetime.datetime.now()
 
