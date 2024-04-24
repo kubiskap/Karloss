@@ -87,4 +87,8 @@ The usage of the GUI is fairly straightforward, although some features are not y
 python C:\\PATH\\TO\\SCRIPT\\ROOT\\gui.py
 ```
 
-In the first window, you will be prompted to select the `config.json` file and the pcap file. After clicking `Accept Config`, a window with a text box will pop up. In this textbox, all of the output of CLI is provided. Click the `Analyse` button to start analysis. After completion, you can click the `Export Results` button and select the output directory.
+In the first window, you will be prompted to select the `config.json` file and the pcap file. After clicking `Accept Config`, a window with a text box will pop up. In this textbox, all of the output of CLI is provided. 
+
+Click the `Analyse` button to start analysis.
+
+After analysis completion, you can either click the `Export Results` button and select the output directory. Or you can `Plot Map`, which will prompt you which messages configured you can plot and whether you want to group markers or not, and to select the output file.
