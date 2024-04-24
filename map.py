@@ -88,64 +88,72 @@ class Map(object):
                 assign_color()
             return used, color
 
-        if not self.map_data:
-            return None
+        if self.map_data:
+            # Create a Folium map centered at first packet coordinates
+            first_packet = self.map_data[0]
+            lat, lon = first_packet.get('latitude', 0), first_packet.get('longitude', 0)
 
-        # Create a Folium map centered at first packet coordinates
-        first_packet = self.map_data[0]
-        lat, lon = first_packet.get('latitude', 0), first_packet.get('longitude', 0)
+            self.map = folium.Map(location=[lat, lon], tiles='OpenStreetMap', zoom_start=12)
 
-        self.map = folium.Map(location=[lat, lon], zoom_start=12)
+            # Add ESRI World Imagery tile layer
+            layer_esri = folium.TileLayer(name='ESRI World Imagery',
+                                          tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery'
+                                                '/MapServer/tile/{z}/{y}/{x}',
+                                          attr='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS,'
+                                               'AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, '
+                                               'and the GIS User Community')
+            self.map.add_child(layer_esri)
 
-        # Create separate feature groups for each message type and assign them random colors
-        used_colors = []
+            # Create separate feature groups for each message type and assign them random colors
+            used_colors = []
 
-        layers, stationID_layers = {}, {}
-        for packet_type in self.packet_types:
-            used_colors, color = assign_color(used_colors)
+            layers, stationID_layers = {}, {}
+            for packet_type in self.packet_types:
+                used_colors, color = assign_color(used_colors)
 
-            # Color legend text based on assigned color
-            lgd_txt = f'<span style="color: {color};">{packet_type}</span>'
+                # Color legend text based on assigned color
+                lgd_txt = f'<span style="color: {color};">{packet_type}</span>'
 
-            if group_markers:
-                layers[packet_type] = (MarkerCluster(name=lgd_txt, overlay=True, control=True, show=False), color)
-            else:
-                layers[packet_type] = (folium.FeatureGroup(name=lgd_txt, overlay=True, control=True, show=False), color)
+                if group_markers:
+                    layers[packet_type] = (MarkerCluster(name=lgd_txt, overlay=True, control=True, show=False), color)
+                else:
+                    layers[packet_type] = (
+                    folium.FeatureGroup(name=lgd_txt, overlay=True, control=True, show=False), color)
 
-            layers[packet_type][0].add_to(self.map)
-            self.map.add_child(layers[packet_type][0])
+                layers[packet_type][0].add_to(self.map)
+                self.map.add_child(layers[packet_type][0])
 
-            stationIDs = []
+                stationIDs = []
+                for packet in self.map_data:
+                    if packet['stationID'] not in stationIDs and packet['type'] == packet_type:
+                        stationIDs.append(packet['stationID'])
+
+                for stationID in stationIDs:
+                    stationID_layers[f'{packet_type}_{stationID}'] = folium.plugins.FeatureGroupSubGroup(
+                        layers[packet_type][0], name=stationID, show=True)
+                    stationID_layers[f'{packet_type}_{stationID}'].add_to(self.map)
+                    self.map.add_child(stationID_layers[f'{packet_type}_{stationID}'])
+
             for packet in self.map_data:
-                if packet['stationID'] not in stationIDs and packet['type'] == packet_type:
-                    stationIDs.append(packet['stationID'])
+                lat, lon = packet.get('latitude', 0), packet.get('longitude', 0)
 
-            for stationID in stationIDs:
-                stationID_layers[f'{packet_type}_{stationID}'] = folium.plugins.FeatureGroupSubGroup(
-                    layers[packet_type][0], name=stationID, show=True)
-                stationID_layers[f'{packet_type}_{stationID}'].add_to(self.map)
-                self.map.add_child(stationID_layers[f'{packet_type}_{stationID}'])
+                popup_text = (f'<b>Type:</b> {packet.get("type", "N/A")}<br>'
+                              f'<b>Arrival time:</b> {packet.get("arrivalTime", "N/A")}<br>'
+                              f'<b>Station ID:</b> {packet.get("stationID", "N/A")}<br>'
+                              f'<b>Speed:</b> {packet.get("speed", "N/A")} km/h')
 
-        for packet in self.map_data:
-            lat, lon = packet.get('latitude', 0), packet.get('longitude', 0)
+                folium.Marker([lat, lon], popup=popup_text, icon=folium.Icon(color=layers[packet['type']][1])).add_to(
+                    stationID_layers[f'{packet['type']}_{packet['stationID']}'])
 
-            popup_text = (f'<b>Type:</b> {packet.get("type", "N/A")}<br>'
-                          f'<b>Arrival time:</b> {packet.get("arrivalTime", "N/A")}<br>'
-                          f'<b>Station ID:</b> {packet.get("stationID", "N/A")}<br>'
-                          f'<b>Speed:</b> {packet.get("speed", "N/A")} km/h')
+            folium.LayerControl(collapsed=False).add_to(self.map)
 
-            folium.Marker([lat, lon], popup=popup_text, icon=folium.Icon(color=layers[packet['type']][1])).add_to(
-                stationID_layers[f'{packet['type']}_{packet['stationID']}'])
-
-        folium.LayerControl(collapsed=False).add_to(self.map)
-
-        # Add GroupedLayerControl
-        for packet_type in self.packet_types:
-            color = layers[packet_type][1]
-            name = f'<span style="color: {color};">{packet_type}</span>_stationID:'
-            layer_list = [layer for key, layer in stationID_layers.items() if key.startswith(packet_type)]
-            GroupedLayerControl(
-                groups={name: layer_list},
-                collapsed=False,
-                exclusive_groups=False
-            ).add_to(self.map)
+            # Add GroupedLayerControl
+            for packet_type in self.packet_types:
+                color = layers[packet_type][1]
+                name = f'<span style="color: {color};">{packet_type}</span>_stationID:'
+                layer_list = [layer for key, layer in stationID_layers.items() if key.startswith(packet_type)]
+                GroupedLayerControl(
+                    groups={name: layer_list},
+                    collapsed=False,
+                    exclusive_groups=False
+                ).add_to(self.map)
