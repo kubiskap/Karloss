@@ -1,10 +1,11 @@
 import tkinter as tk
-from tkinter import filedialog, scrolledtext
+from tkinter import filedialog, scrolledtext, ttk
 import sys
 from core import PacketAnalyser
 import datetime
 import threading
 from io import StringIO
+import json
 
 
 class WindowStream(StringIO):
@@ -93,11 +94,20 @@ class PacketAnalyzerApp:
         button_frame = tk.Frame(root)
         button_frame.pack(padx=5, pady=10)
 
-        self.analyze_button = tk.Button(button_frame, text="Analyze Packets", command=self.analyze_packets)
+        self.analyze_button = tk.Button(
+            button_frame, text="Analyze Packets", command=self.analyze_packets
+        )
         self.analyze_button.pack(side=tk.LEFT, padx=5)
 
-        self.export_button = tk.Button(button_frame, text="Export Results", command=self.export_results, state=tk.DISABLED)
+        self.export_button = tk.Button(
+            button_frame, text="Export Results", command=self.export_results, state=tk.DISABLED
+        )
         self.export_button.pack(side=tk.LEFT, padx=5)
+
+        self.plot_map_button = tk.Button(
+            button_frame, text="Plot Map", command=self.plot_map, state=tk.DISABLED
+        )
+        self.plot_map_button.pack(side=tk.LEFT, padx=5)
 
         # Log window to display import and analysis progress
         self.log_text = scrolledtext.ScrolledText(root, width=80, height=20, wrap=tk.WORD)
@@ -113,8 +123,9 @@ class PacketAnalyzerApp:
         threading.Thread(target=self.perform_analysis).start()
 
     def perform_analysis(self):
-        # Disable Export button during analysis
+        # Disable Export and Plot button during analysis
         self.export_button.config(state=tk.DISABLED)
+        self.plot_map_button.config(state=tk.DISABLED)
 
         # Redirect stdout to the log text widget
         sys.stdout = WindowStream(self.log_text)
@@ -123,17 +134,15 @@ class PacketAnalyzerApp:
             # Perform packet analysis
             self.packet_handler.analyse()
 
-            # Enable Export button after analysis is complete
+            # Enable Export and Plot button after analysis is complete
             self.export_button.config(state=tk.NORMAL)
+            self.plot_map_button.config(state=tk.NORMAL)
         except Exception as e:
             # Print any exceptions to the redirected stdout
             print(f"Error during analysis: {str(e)}")
         finally:
             # Restore sys.stdout
             sys.stdout = sys.__stdout__
-
-            # Enable UI after analysis
-            self.root.after(0, self.enable_ui)
 
     def export_results(self):
         # Redirect stdout to the log text widget
@@ -148,9 +157,74 @@ class PacketAnalyzerApp:
         # Restore sys.stdout
         sys.stdout = sys.__stdout__
 
-    def enable_ui(self):
-        # Enable the Analyze Packets button
-        self.analyze_button.config(state=tk.NORMAL)
+    def plot_map(self):
+        def map_configuration_window(options):
+            selected_types = []
+
+            # Create a new Toplevel window for the multiselect dialog
+            dialog = tk.Toplevel(self.root)
+            dialog.title('Configure Map Plot')
+
+            # Label to display instructions to select message types
+            label = ttk.Label(dialog, text='Message Types')
+            label.pack(padx=10, pady=10)
+
+            # Create Checkbuttons for each option
+            checkbuttons = []
+            for option in options:
+                var = tk.BooleanVar(value=False)
+                checkbutton = ttk.Checkbutton(dialog, text=option, variable=var)
+                checkbutton.pack(anchor=tk.W, padx=10, pady=5)
+                checkbuttons.append((option, var))
+
+            # Label to display instructions to if MarkerCluster is wanted
+            label = ttk.Label(dialog, text='Plot Configuration')
+            label.pack(padx=10, pady=10)
+
+            group_markers = tk.BooleanVar(value=True)
+            group_markers_checkbutton = ttk.Checkbutton(dialog, text='Group markers', variable=group_markers)
+            group_markers_checkbutton.pack(anchor=tk.W, padx=10, pady=5)
+
+            # Function to handle dialog close and return selected types
+            def close_dialog():
+                nonlocal selected_types
+                selected_types = [option for option, var in checkbuttons if var.get()]
+                dialog.destroy()
+
+            # Button to confirm and close dialog
+            confirm_button = ttk.Button(dialog, text="Confirm", command=close_dialog)
+            confirm_button.pack(pady=10)
+
+            # Set modal behavior for the dialog (blocks interaction with parent window)
+            dialog.transient(self.root)
+            dialog.grab_set()
+            self.root.wait_window(dialog)
+
+            return selected_types, group_markers.get()
+
+        # Redirect stdout to the log text widget
+        sys.stdout = WindowStream(self.log_text)
+
+        # Read configured message types from config
+        with open(self.config_file, 'r') as f:
+            config = json.load(f)
+        types_configured = list(config.get('mapData', {}).keys())
+
+        # Prompt user to select types to plot from configured types
+        types_selected, markercluster = map_configuration_window(types_configured)
+
+        # If there are some message types selected
+        if types_selected:
+            # Prompt user to choose a location to save the map HTML file
+            save_path = filedialog.asksaveasfilename(
+                defaultextension=".html",
+                filetypes=[("HTML File", "*.html")],
+                title="Save Map HTML File",
+            )
+
+            if save_path:
+                self.packet_handler.plot_map(
+                    packet_types=types_selected, output_location=save_path, group_markers=markercluster)
 
     def gui_log_message(self, message):
         # Get current date and time
