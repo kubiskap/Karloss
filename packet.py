@@ -134,7 +134,7 @@ class Packet(object):
                                 if restriction is not None:
                                     in_range.append(value in range(restriction[0], restriction[1] + 1))
                             if not all(in_range):
-                                problems.append(Problem(1, 'Value is out of range.'))
+                                problems.append(Problem(1, f'Value is out of range ({asn['restricted-to']}).'))
                         if 'named-numbers' in asn.keys():
 
                             # Try to determine if named-numbers try to provide only the unit of value, in which case
@@ -153,9 +153,9 @@ class Packet(object):
                                                       list(asn['named-numbers'].values()).index(value)]]
 
                                 if value == asn['named-numbers'].get('unavailable'):
-                                    problems.append(Problem(0, 'Value is unavailable.'))
+                                    problems.append(Problem(0, 'Value is unavailable (named-numbers).'))
                                 elif value == asn['named-numbers'].get('outOfRange'):
-                                    problems.append(Problem(1, 'Value is out of range.'))
+                                    problems.append(Problem(1, 'Value is out of range (named-numbers).'))
 
                             elif not any(named_num_is_unit):
                                 problems.append(Problem(0, 'Value not in named-numbers.'))
@@ -172,11 +172,11 @@ class Packet(object):
                                 else:
                                     value_list.append(i)
                             if value not in value_list:
-                                problems.append(Problem(1, 'Value not in defined values.'))
+                                problems.append(Problem(1, 'Enumerate value not in defined values.'))
                             elif value == 'unavailable':
-                                problems.append(Problem(0, 'Value is unavailable.'))
+                                problems.append(Problem(0, 'Enumerate value set to to unavailable.'))
                             elif value == 'outOfRange':
-                                problems.append(Problem(0, 'Value is out of range.'))
+                                problems.append(Problem(0, 'Enumerate value set to out of range.'))
 
                     case 'IA5String' | 'NumericString' | 'SEQUENCE OF':
                         """
@@ -190,7 +190,7 @@ class Packet(object):
                                 else:
                                     size_allowed.append(value is None)
                             if not all(size_allowed):
-                                problems.append(Problem(1, 'Out of specified size.'))
+                                problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
 
                     case 'BIT STRING':
                         """
@@ -198,7 +198,7 @@ class Packet(object):
                         """
                         if 'size' in asn.keys():
                             if len(value) != asn['size'][0]:
-                                problems.append(Problem(1, 'Out of specified size.'))
+                                problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
                         if 'named-bits' in asn.keys():
                             bits_activated = []
                             for index, bit in enumerate(list(value)):
@@ -218,7 +218,7 @@ class Packet(object):
                                 else:
                                     size_allowed.append(value is None)
                             if not all(size_allowed):
-                                problems.append(Problem(1, 'Out of specified size.'))
+                                problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
 
             elif 'member-type_type' in asn.keys():
                 """
@@ -237,17 +237,18 @@ class Packet(object):
                         for member, memAsnValue in asn.items():
                             if isinstance(memAsnValue, dict) and member not in value.keys() and memAsnValue.get(
                                     'optional') is not True:
-                                problems.append(Problem(1, f'Mandatory parameter {member} missing.'))
+                                problems.append(Problem(1, f'Mandatory parameter {member} missing from Sequence.'))
                             elif isinstance(memAsnValue, dict) and member not in value.keys() and memAsnValue.get(
                                     'optional') is True:
-                                problems.append(Problem(0, f'Optional parameter {member} missing.'))
+                                problems.append(Problem(0, f'Optional parameter {member} missing from Sequence.'))
 
                     case 'CHOICE':
                         """
                         Checks if only one of parameters specified in definition is present.
                         """
                         if list(value.keys())[0] not in asn.keys():
-                            problems.append(Problem(1, f'Mandatory parameter {list(value.keys())[0]} missing.'))
+                            problems.append(Problem(1, f'Mandatory parameter {list(value.keys())[0]} missing from '
+                                                       f'Choice.'))
             return value_extended
 
         def summary_add(summary_state: str):
@@ -323,7 +324,7 @@ class Packet(object):
             if isinstance(self.data, dict):
 
                 # Establish output by copying base data
-                self.data_analysed = copy.deepcopy(self.data)
+                self.data_analysed = {copy.deepcopy(self.data)}
 
                 # Main loop over all parameters (using recursive_parameters generator)
                 for path, key, value in recursive_parameters(self.data_analysed):
