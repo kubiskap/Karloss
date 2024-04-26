@@ -324,7 +324,7 @@ class Packet(object):
             if isinstance(self.data, dict):
 
                 # Establish output by copying base data
-                self.data_analysed = {copy.deepcopy(self.data)}
+                self.data_analysed = copy.deepcopy(self.data)
 
                 # Main loop over all parameters (using recursive_parameters generator)
                 for path, key, value in recursive_parameters(self.data_analysed):
