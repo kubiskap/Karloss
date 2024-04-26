@@ -161,13 +161,6 @@ class PacketAnalyser(object):
 
     def analyse(self, reset_cache=True):
 
-        def add_pkt_summary():
-            default_val = [0, 0, 0]
-            ps = pkt.pkt_summary
-            s = self.summary
-
-            self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in set(ps) | set(s)}
-
         # Create analysed cache dir
         analysed_cache_dir = self.__cache_dir('analysed_cache')
 
@@ -176,7 +169,7 @@ class PacketAnalyser(object):
         cache_present = [os.path.isfile(f) for f in cache_files]
 
         # Only if packets have been imported first
-        if self.packets and self.state == 'Imported file':
+        if self.packets:
             time_analysis_start = datetime.datetime.now()
 
             # Check if all packets are present in the analysed cache
@@ -206,9 +199,6 @@ class PacketAnalyser(object):
                     # Replace packet object from array with the one from cache
                     self.packets[idx] = self.__cache_action(file, 'r')
 
-                    # Add pkt_summary of the packet into the big summary
-                    add_pkt_summary()
-
                     time_packet_end = datetime.datetime.now()
 
                     self.log_message(f'{self.packets[idx].type} packet {idx + 1}/{len(self.packets)} loaded from'
@@ -226,9 +216,6 @@ class PacketAnalyser(object):
                     if pkt_asn:
                         # Analyse packet
                         pkt.analyse_packet(pkt_asn[0])
-
-                        # Add pkt_summary of the packet into the big summary
-                        add_pkt_summary()
 
                         time_packet_end = datetime.datetime.now()
 
@@ -251,16 +238,6 @@ class PacketAnalyser(object):
             # Update state
             self.state = 'Analysis complete'
 
-            # Generate statistics
-            for idx, packet in enumerate(self.packets):
-                if packet.type in self.packet_types.keys():
-                    self.packet_types[packet.type]['freq'][packet.state] += 1
-                    self.packet_types[packet.type]['idx'] = self.packet_types[packet.type]['idx'] + [idx + 1]
-                else:
-                    self.packet_types[packet.type] = {'freq': {'Not analysed': 0, 'OK': 0, 'Warning': 0, 'Error': 0},
-                                                      'idx': [idx + 1]}
-                    self.packet_types[packet.type]['freq'][packet.state] += 1
-
             time_analysis_end = datetime.datetime.now()
             self.log_message('Analysis complete.'
                              f' Duration: {(time_analysis_end - time_analysis_start).total_seconds() / 60} min;'
@@ -270,8 +247,54 @@ class PacketAnalyser(object):
             self.log_message('You need to import the packets first before analysis.')
 
     def output_results(self, output_location):
-        # If summary is not empty (analysis has been run)
+
         if self.state == 'Analysis complete':
+
+            # Functions used to fill self.pkt_types and summary
+            def add_pkt_summary():
+                default_val = [0, 0, 0]
+                ps = packet.pkt_summary
+                s = self.summary
+
+                self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
+                                set(ps) | set(s)}
+
+            def add_pkt_types():
+                if packet.type in self.packet_types.keys():
+
+                    self.packet_types[packet.type][packet.state]['num'] += 1
+
+                    if packet.pkt_problems:
+                        warnings, errors = [], []
+
+                        for parameter, value in packet.pkt_problems.items():
+                            if value['warningParams']:
+                                warnings.append(parameter)
+                            if value['errorParams']:
+                                errors.append(parameter)
+
+                        idx_val = {idx + 1: {'Warnings': warnings, 'Errors': errors}}
+                    else:
+                        idx_val = idx + 1
+
+                    self.packet_types[packet.type][packet.state]['idx'] = (
+                            self.packet_types[packet.type][packet.state]['idx'] + [idx_val])
+
+                else:
+                    self.packet_types[packet.type] = {state: {'num': 0, 'idx': []} for state in states}
+                    add_pkt_types()
+
+            # Create list of states of packets present in the file
+            states = []
+            for packet in self.packets:
+                if packet.state not in states:
+                    states.append(packet.state)
+
+            # Generate statistics
+            for idx, packet in enumerate(self.packets):
+                add_pkt_summary()
+                add_pkt_types()
+
             # Create folder in output_location based on session name (taken from log_file)
             output_path = os.path.join(output_location, os.path.splitext(os.path.basename(self.log_file))[0])
             if not os.path.exists(output_path):
