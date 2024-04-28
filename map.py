@@ -46,7 +46,7 @@ class Map(object):
                 # If there is path value configured
                 if path is not None:
                     # Get value of parameter under this path in current packet
-                    value = packet.values.get(path, None)
+                    value = packet.values.get(path, (None, None))[0]
 
                     # If anything is found in the packet
                     if value is not None:
@@ -54,7 +54,7 @@ class Map(object):
                         # If there are no problems with the parameter or the only problem is with named-numbers, proceed
                         if path not in packet.problems.keys():
 
-                            pkt_value[key] = (unit_conversion(value[0]), value[1])
+                            pkt_value[key] = unit_conversion(value)
 
                         # If there are problems, do not add the packet
                         else:
@@ -135,10 +135,10 @@ class Map(object):
             for packet in self.map_data:
                 lat, lon = packet.get('latitude', 0), packet.get('longitude', 0)
 
-                popup_text = (f'<b>Type:</b> {packet.get("stationType", "N/A")[1]}<br>'
-                              f'<b>Arrival time:</b> {packet.get("arrivalTime", "N/A")[0]}<br>'
-                              f'<b>Station ID:</b> {packet.get("stationID", "N/A")[0]}<br>'
-                              f'<b>Speed:</b> {packet.get("speed", "N/A")[0]} km/h')
+                popup_text = (f'<b>Type:</b> {packet.get("type", "N/A")}<br>'
+                              f'<b>Arrival time:</b> {packet.get("arrivalTime", "N/A")}<br>'
+                              f'<b>Station ID:</b> {packet.get("stationID", "N/A")}<br>'
+                              f'<b>Speed:</b> {packet.get("speed", "N/A")} km/h')
 
                 folium.Marker([lat, lon], popup=popup_text, icon=folium.Icon(color=layers[packet['type']][1])).add_to(
                     stationID_layers[f'{packet['type']}_{packet['stationID']}'])
