@@ -253,7 +253,7 @@ class PacketAnalyser(object):
             # Functions used to fill self.pkt_types and summary
             def add_pkt_summary():
                 default_val = [0, 0, 0]
-                ps = packet.pkt_summary
+                ps = packet.summary
                 s = self.summary
 
                 self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
@@ -264,10 +264,10 @@ class PacketAnalyser(object):
 
                     self.packet_types[packet.type][packet.state]['num'] += 1
 
-                    if packet.pkt_problems:
+                    if packet.problems:
                         warnings, errors = [], []
 
-                        for parameter, value in packet.pkt_problems.items():
+                        for parameter, value in packet.problems.items():
                             if value['warningParams']:
                                 warnings.append(parameter)
                             if value['errorParams']:
@@ -318,8 +318,8 @@ class PacketAnalyser(object):
                 json_packet = {
                     'type': packet.type,
                     'state': packet.state,
-                    'problems': packet.pkt_problems,
-                    'data_analysed': packet.data_analysed
+                    'problems': packet.problems,
+                    'data_analysed': packet.analysed
                 }
                 with open(os.path.join(packets_path, f'packet{idx + 1}.json'), 'w') as f:
                     json.dump(json_packet, f, indent=4, sort_keys=False)

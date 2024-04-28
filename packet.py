@@ -59,9 +59,10 @@ class Packet(object):
         self.state = 'Not analysed'
 
         # Initiate attributes used for packet analysis results
-        self.data_analysed = None
-        self.pkt_summary = {}
-        self.pkt_problems = {}
+        self.analysed = {}
+        self.values = {}
+        self.summary = {}
+        self.problems = {}
 
     def analyse_packet(self, asn_dictionary: dict):
         def recursive_parameters(packet: dict, path=None):
@@ -113,9 +114,6 @@ class Packet(object):
 
         def analyse_parameter():
 
-            # Establish extended value variable
-            value_extended = copy.deepcopy(value)
-
             if 'type' in asn.keys():
                 """
                 'type' key is found in all data types except "SEQUENCE" and "CHOICE".
@@ -148,9 +146,8 @@ class Packet(object):
                                 named_num_is_unit.append(named_num.startswith(numbers))
 
                             if value in asn['named-numbers'].values():
-                                value_extended = [value_extended,
-                                                  list(asn['named-numbers'].keys())[
-                                                      list(asn['named-numbers'].values()).index(value)]]
+                                extended_value[1] = list(asn['named-numbers'].keys())[
+                                                      list(asn['named-numbers'].values()).index(value)]
 
                                 if value == asn['named-numbers'].get('unavailable'):
                                     problems.append(Problem(0, 'Value is unavailable (named-numbers).'))
@@ -174,7 +171,7 @@ class Packet(object):
                             if value not in value_list:
                                 problems.append(Problem(1, 'Enumerate value not in defined values.'))
                             elif value == 'unavailable':
-                                problems.append(Problem(0, 'Enumerate value set to to unavailable.'))
+                                problems.append(Problem(0, 'Enumerate value set to unavailable.'))
                             elif value == 'outOfRange':
                                 problems.append(Problem(0, 'Enumerate value set to out of range.'))
 
@@ -204,7 +201,7 @@ class Packet(object):
                             for index, bit in enumerate(list(value)):
                                 if bit == '1':
                                     bits_activated.append(asn['named-bits'][index][0])
-                            value_extended = [value_extended, bits_activated]
+                            extended_value[1] = bits_activated
 
                     case 'SEQUENCE OF':
                         """
@@ -249,9 +246,8 @@ class Packet(object):
                         if list(value.keys())[0] not in asn.keys():
                             problems.append(Problem(1, f'Mandatory parameter {list(value.keys())[0]} missing from '
                                                        f'Choice.'))
-            return value_extended
 
-        def summary_add(summary_state: str):
+        def add_to_statistics(summary_state: str):
             """
             Function to fill in the packet summary and packet errors.
 
@@ -274,33 +270,33 @@ class Packet(object):
             summary_key = '.'.join(path_converted)
 
             # If there is already key created, just add the value into the array
-            if summary_key in self.pkt_summary:
+            if summary_key in self.summary:
                 match summary_state:
                     case 'Error':
-                        self.pkt_summary[summary_key][2] += 1
+                        self.summary[summary_key][2] += 1
                     case 'Warning':
-                        self.pkt_summary[summary_key][1] += 1
+                        self.summary[summary_key][1] += 1
                     case 'OK':
-                        self.pkt_summary[summary_key][0] += 1
+                        self.summary[summary_key][0] += 1
 
             # If the key has not yet been created, create it and add value into the array
             else:
                 # Create the key
-                self.pkt_summary[summary_key] = [0, 0, 0]  # OK, Warning, Error
+                self.summary[summary_key] = [0, 0, 0]  # OK, Warning, Error
                 # Add the value to the key
-                summary_add(summary_state)
+                add_to_statistics(summary_state)
 
             # # PKT_PROBLEMS # #
             if problems:
-                # Create pkt_problems key by joining path with dots
+                # Create problems key by joining path with dots
                 problems_key = '.'.join(path)
 
-                # Create a key in pkt_problems for this specific parameter
-                self.pkt_problems[problems_key] = {'Warnings': None, 'Errors': None}
+                # Create a key in problems for this specific parameter
+                self.problems[problems_key] = {'Warnings': None, 'Errors': None}
 
-                self.pkt_problems[problems_key]['Warnings'] = [problem.desc for problem in problems if
-                                                               problem.flag == 0]
-                self.pkt_problems[problems_key]['Errors'] = [problem.desc for problem in problems if problem.flag == 1]
+                self.problems[problems_key]['Warnings'] = [problem.desc for problem in problems if
+                                                           problem.flag == 0]
+                self.problems[problems_key]['Errors'] = [problem.desc for problem in problems if problem.flag == 1]
 
         def evaluate_parameter():
             # If the parameter is evaluated as an Error, set both the parameter and packet state as Error
@@ -323,11 +319,8 @@ class Packet(object):
         if self.state == 'Not analysed':
             if isinstance(self.data, dict):
 
-                # Establish output by copying base data
-                self.data_analysed = copy.deepcopy(self.data)
-
                 # Main loop over all parameters (using recursive_parameters generator)
-                for path, key, value in recursive_parameters(self.data_analysed):
+                for path, key, value in recursive_parameters(self.data):
 
                     # Convert the path if there are any listItems
                     path_converted, asn_path = convert_item_path(path)
@@ -353,13 +346,13 @@ class Packet(object):
                             print(asn)
                             raise TypeError(f'ASN not dict type for parameter located on "{path}"')
 
-                    # Establish extended value
-                    extended_value = copy.deepcopy(value)
+                    # Establish extended value (second element being named-number value or bits_activated)
+                    extended_value = [value, None]
 
                     # If there are no problems with the ASN, analyse the parameter
                     if not problems:
                         # Analyse the parameter
-                        extended_value = analyse_parameter()
+                        analyse_parameter()
 
                     """
                     Evaluate the parameter state after analysis
@@ -371,15 +364,20 @@ class Packet(object):
                     # Evaluate parameter
                     parameter_state = evaluate_parameter()
 
-                    # Add to summary and pkt_problems
-                    summary_add(parameter_state)
+                    # Add to summary and problems
+                    add_to_statistics(parameter_state)
 
-                    # Construct new value to be assigned to parameter in data_analysed
-                    value_to_set = [extended_value, parameter_state, None if not problem_flags else problem_descs]
+                    # Join path to create flattened dict key
+                    flatdict_key = '.'.join(path)
 
-                    # Set the value directly using JSONPath
-                    matches = jsonpath_ng.parse("$." + ".".join(path)).find(self.data_analysed)
-                    matches[0].full_path.update(self.data_analysed, value_to_set)
+                    # Add extended value into values
+                    self.values[flatdict_key] = extended_value
+
+                    # Construct value to be assigned to parameter in analysed
+                    analysed_value = (parameter_state, None if not problem_flags else problem_descs)
+
+                    # Add value to analysed
+                    self.analysed['.'.join(path)] = analysed_value
 
             # There was a problem during decoding, in this case the data value type will be a string
             elif isinstance(self.data, str):
@@ -399,14 +397,15 @@ class Packet(object):
                 summary_key = '.'.join(path_converted)
 
                 # Add to summary
-                if summary_key in self.pkt_summary:
-                    self.pkt_summary[summary_key][2] += 1
+                if summary_key in self.summary:
+                    self.summary[summary_key][2] += 1
                 else:
-                    self.pkt_summary[summary_key] = [0, 0, 1]
+                    self.summary[summary_key] = [0, 0, 1]
 
-                # Add to pkt_problems
-                self.pkt_problems[faulty_parameter_path] = {'Warnings': None,
-                                                            'Errors': [f'{error_type}: {problem_description}']}
+                # Add to problems and analysed
+                self.analysed[faulty_parameter_path] = ('Error', problem_description)
+                self.problems[faulty_parameter_path] = {'Warnings': None,
+                                                        'Errors': [f'{error_type}: {problem_description}']}
 
             else:
                 raise TypeError(f'Value data type not dict or string.')
