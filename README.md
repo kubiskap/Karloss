@@ -27,8 +27,9 @@ The user will be prompted to enter the directory, in which he wishes to save the
   * packet type,
   * packet state (OK, Warning, Error),
   * problematic parameters with problem descriptions,
-  * analysed data -- preserved packet structure with each parameter containing value, parameter state and parameter problems,
-* `pkt_types.json`, containing information about counts of each packet types in the file and
+  * analysed parameters -- each parameter containing information about its' state and problems
+  * values - value of each parameter with its named-numbers or bits-activated value
+* `pkt_types.json`, containing information about counts of each packet types in the file and their IDs and problems
 * `summary.json`, containing information about counts of each parameter being OK, Warning or Error
 
 ## Usage

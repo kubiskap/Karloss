@@ -45,18 +45,16 @@ class Map(object):
 
                 # If there is path value configured
                 if path is not None:
-                    # Get content of current packet under this path
-                    matches = jsonpath_ng.parse("$." + path).find(packet.data)
+                    # Get value of parameter under this path in current packet
+                    value = packet.values.get(path, (None, None))[0]
 
                     # If anything is found in the packet
-                    if matches:
+                    if value is not None:
 
                         # If there are no problems with the parameter or the only problem is with named-numbers, proceed
-                        if (path not in packet.pkt_problems.keys()) or (
-                                'Value not in named-numbers.' in
-                                packet.pkt_problems.get(path, {'Errors': [], 'Warnings': []})['Warnings']):
+                        if path not in packet.problems.keys():
 
-                            pkt_value[key] = unit_conversion(matches[0].value)
+                            pkt_value[key] = unit_conversion(value)
 
                         # If there are problems, do not add the packet
                         else:

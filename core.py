@@ -253,7 +253,7 @@ class PacketAnalyser(object):
             # Functions used to fill self.pkt_types and summary
             def add_pkt_summary():
                 default_val = [0, 0, 0]
-                ps = packet.pkt_summary
+                ps = packet.summary
                 s = self.summary
 
                 self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
@@ -264,16 +264,16 @@ class PacketAnalyser(object):
 
                     self.packet_types[packet.type][packet.state]['num'] += 1
 
-                    if packet.pkt_problems:
+                    if packet.problems:
                         warnings, errors = [], []
 
-                        for parameter, value in packet.pkt_problems.items():
-                            if value['warningParams']:
+                        for parameter, value in packet.problems.items():
+                            if value['Warnings']:
                                 warnings.append(parameter)
-                            if value['errorParams']:
+                            if value['Errors']:
                                 errors.append(parameter)
 
-                        idx_val = {idx + 1: {'Warnings': warnings, 'Errors': errors}}
+                        idx_val = {idx + 1: {'warningParams': warnings, 'errorParams': errors}}
                     else:
                         idx_val = idx + 1
 
@@ -302,11 +302,11 @@ class PacketAnalyser(object):
 
             # Generate summary.json
             with open(os.path.join(output_path, 'summary.json'), 'w') as f:
-                json.dump(self.summary, f, indent=4, sort_keys=True)
+                json.dump(self.summary, f, indent=4, sort_keys=True, default=str)
 
             # Generate pkt_types.json
             with open(os.path.join(output_path, 'pkt_types.json'), 'w') as f:
-                json.dump(self.packet_types, f, indent=4, sort_keys=True)
+                json.dump(self.packet_types, f, indent=4, sort_keys=True, default=str)
 
             # Generate output for each analysed packet
             packets_path = os.path.join(output_path, 'packets')
@@ -314,15 +314,30 @@ class PacketAnalyser(object):
                 os.makedirs(packets_path)
 
             for idx, packet in enumerate(self.packets):
+
+                # Merge packet.values and packet.analysed into one dict
+                parameters = {}
+
+                for parameter, analysed_val in sorted(packet.analysed.items()):
+                    values_val = packet.values.get(parameter, ('Not found', None))
+
+                    parameters[parameter] = {
+                            'value': values_val[0],
+                            'namedNum': values_val[1],
+                            'state': analysed_val[0],
+                            'problems': analysed_val[1]
+                        }
+
                 # Join desired packet parameters into one dict
                 json_packet = {
+                    'arrivalTime': packet.arrival_time,
                     'type': packet.type,
                     'state': packet.state,
-                    'problems': packet.pkt_problems,
-                    'data_analysed': packet.data_analysed
+                    'problems': dict(sorted(packet.problems.items())),
+                    'parameters': parameters
                 }
                 with open(os.path.join(packets_path, f'packet{idx + 1}.json'), 'w') as f:
-                    json.dump(json_packet, f, indent=4, sort_keys=False)
+                    json.dump(json_packet, f, indent=4, sort_keys=False, default=str)
 
             # Add a message to the log
             self.log_message(f'Results successfully exported to: {output_path}')
