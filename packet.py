@@ -1,7 +1,4 @@
 import jsonpath_ng
-import copy
-
-from msg import ItsMessage
 
 
 class Packet(object):
