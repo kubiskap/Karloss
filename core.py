@@ -314,13 +314,27 @@ class PacketAnalyser(object):
                 os.makedirs(packets_path)
 
             for idx, packet in enumerate(self.packets):
+
+                # Merge packet.values and packet.analysed into one dict
+                parameters = {}
+
+                for parameter, analysed_val in sorted(packet.analysed.items()):
+                    values_val = packet.values[parameter]
+
+                    parameters[parameter] = {
+                        'value': values_val[0],
+                        'namedNum': values_val[1],
+                        'state': analysed_val[0],
+                        'problems': analysed_val[1]
+                    }
+
                 # Join desired packet parameters into one dict
                 json_packet = {
+                    'arrivalTime': packet.arrival_time,
                     'type': packet.type,
                     'state': packet.state,
-                    'problems': packet.problems,
-                    'analysed': packet.analysed,
-                    'values': packet.values
+                    'problems': dict(sorted(packet.problems)),
+                    'parameters': parameters
                 }
                 with open(os.path.join(packets_path, f'packet{idx + 1}.json'), 'w') as f:
                     json.dump(json_packet, f, indent=4, sort_keys=False)
