@@ -153,7 +153,7 @@ class PacketAnalyser(object):
             time_import_end = datetime.datetime.now()
             import_duration = (time_import_end - time_import_start).total_seconds()
             self.log_message(
-                f'{len(pcap)} packets imported from {input_file}; Import duration: {import_duration:.2f} seconds. '
+                f'{idx + 1} packets imported from {input_file}; Import duration: {import_duration:.2f} seconds. '
                 f'Total imported packets: {len(self.packets)}')
         finally:
             # Explicitly close the capture to release resources and terminate event loop
@@ -302,11 +302,11 @@ class PacketAnalyser(object):
 
             # Generate summary.json
             with open(os.path.join(output_path, 'summary.json'), 'w') as f:
-                json.dump(self.summary, f, indent=4, sort_keys=True)
+                json.dump(self.summary, f, indent=4, sort_keys=True, default=str)
 
             # Generate pkt_types.json
             with open(os.path.join(output_path, 'pkt_types.json'), 'w') as f:
-                json.dump(self.packet_types, f, indent=4, sort_keys=True)
+                json.dump(self.packet_types, f, indent=4, sort_keys=True, default=str)
 
             # Generate output for each analysed packet
             packets_path = os.path.join(output_path, 'packets')
@@ -319,25 +319,25 @@ class PacketAnalyser(object):
                 parameters = {}
 
                 for parameter, analysed_val in sorted(packet.analysed.items()):
-                    values_val = packet.values[parameter]
+                    values_val = packet.values.get(parameter, ('Not found', None))
 
                     parameters[parameter] = {
-                        'value': values_val[0],
-                        'namedNum': values_val[1],
-                        'state': analysed_val[0],
-                        'problems': analysed_val[1]
-                    }
+                            'value': values_val[0],
+                            'namedNum': values_val[1],
+                            'state': analysed_val[0],
+                            'problems': analysed_val[1]
+                        }
 
                 # Join desired packet parameters into one dict
                 json_packet = {
                     'arrivalTime': packet.arrival_time,
                     'type': packet.type,
                     'state': packet.state,
-                    'problems': dict(sorted(packet.problems)),
+                    'problems': dict(sorted(packet.problems.items())),
                     'parameters': parameters
                 }
                 with open(os.path.join(packets_path, f'packet{idx + 1}.json'), 'w') as f:
-                    json.dump(json_packet, f, indent=4, sort_keys=False)
+                    json.dump(json_packet, f, indent=4, sort_keys=False, default=str)
 
             # Add a message to the log
             self.log_message(f'Results successfully exported to: {output_path}')
