@@ -52,7 +52,7 @@ class Map(object):
                     if value is not None:
 
                         # If there are no problems with the parameter or the only problem is with named-numbers, proceed
-                        if path not in packet.pkt_problems.keys():
+                        if path not in packet.problems.keys():
 
                             pkt_value[key] = (unit_conversion(value[0]), value[1])
 
