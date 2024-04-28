@@ -268,12 +268,12 @@ class PacketAnalyser(object):
                         warnings, errors = [], []
 
                         for parameter, value in packet.problems.items():
-                            if value['warningParams']:
+                            if value['Warnings']:
                                 warnings.append(parameter)
-                            if value['errorParams']:
+                            if value['Errors']:
                                 errors.append(parameter)
 
-                        idx_val = {idx + 1: {'Warnings': warnings, 'Errors': errors}}
+                        idx_val = {idx + 1: {'warningParams': warnings, 'errorParams': errors}}
                     else:
                         idx_val = idx + 1
 
