@@ -319,7 +319,8 @@ class PacketAnalyser(object):
                     'type': packet.type,
                     'state': packet.state,
                     'problems': packet.problems,
-                    'data_analysed': packet.analysed
+                    'analysed': packet.analysed,
+                    'values': packet.values
                 }
                 with open(os.path.join(packets_path, f'packet{idx + 1}.json'), 'w') as f:
                     json.dump(json_packet, f, indent=4, sort_keys=False)
