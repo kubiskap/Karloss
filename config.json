@@ -83,19 +83,54 @@
 			]
 		}
 	},
-	"mapData": {
+	"mapConfig": {
 		"CAM": {
-			"stationID": "CAM.header.stationID",
-			"stationType": "CAM.cam.camParameters.basicContainer.stationType",
-			"latitude": "CAM.cam.camParameters.basicContainer.referencePosition.latitude", 
-			"longitude": "CAM.cam.camParameters.basicContainer.referencePosition.longitude",
-			"speed": "CAM.cam.camParameters.highFrequencyContainer.basicVehicleContainerHighFrequency.speed.speedValue"
+			"icon": {
+				"stationType": {
+					"pedestrian": "person-walking",
+					"cyclist": "person-biking",
+					"moped": "bicycle",
+					"motorcycle": "motorcycle",
+					"passengerCar": "car-side",
+					"bus": "van-shuttle",
+					"lightTruck": "truck",
+					"heavyTruck": "truck-moving",
+					"trailer": "trailer",
+					"specialVehicles": "truck-medical",
+					"tram": "train-tram",
+					"roadSideUnit": "road"
+				}
+			},
+			"paths": {
+				"stationID": "CAM.header.stationID",
+				"stationType": "CAM.cam.camParameters.basicContainer.stationType",
+				"latitude": "CAM.cam.camParameters.basicContainer.referencePosition.latitude", 
+				"longitude": "CAM.cam.camParameters.basicContainer.referencePosition.longitude",
+				"speed": "CAM.cam.camParameters.highFrequencyContainer.basicVehicleContainerHighFrequency.speed.speedValue"
+			}
 		},
 		"DENM": {
-			"stationID": "DENM.header.stationID",
-			"stationType": "DENM.denm.management.stationType",
-			"latitude": "DENM.denm.management.eventPosition.latitude",
-			"longitude": "DENM.denm.management.eventPosition.longitude"
+			"icon": {
+				"stationType": {
+					"pedestrian": "person-walking",
+					"cyclist": "person-biking",
+					"moped": "bicycle",
+					"motorcycle": "motorcycle",
+					"passengerCar": "car-side",
+					"bus": "van-shuttle",
+					"lightTruck": "truck",
+					"heavyTruck": "truck-moving",
+					"trailer": "trailer",
+					"specialVehicles": "truck-medical",
+					"tram": "train-tram",
+					"roadSideUnit": "road"
+				}
+			},
+			"paths": {
+				"stationID": "DENM.header.stationID",
+				"stationType": "DENM.denm.management.stationType",
+				"latitude": "DENM.denm.management.eventPosition.latitude",
+				"longitude": "DENM.denm.management.eventPosition.longitude"
 		}
 	}
 }
