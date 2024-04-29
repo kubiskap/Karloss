@@ -1,8 +1,8 @@
 import folium
 from folium.plugins import MarkerCluster
 from folium.plugins import GroupedLayerControl
-import jsonpath_ng
 import random
+import re
 
 
 class Map(object):
@@ -28,17 +28,17 @@ class Map(object):
 
         # Raise an exception if requested packet type is not configured in map_data
         for packet_type in self.packet_types:
-            if packet_type not in self.session_object.config['mapData'].keys():
+            if packet_type not in self.session_object.config['mapConfig'].keys():
                 raise Exception(f'Message type "{packet_type}" not configured in config.')
 
         # Get map data from each selected packet
         map_data = []
         for packet in selected_packets:
             # Establish packet value
-            pkt_value = {'type': packet.type, 'arrivalTime': packet.arrival_time}
+            pkt_value = {'type': (packet.type, None), 'arrivalTime': (packet.arrival_time, None)}
 
             # Get config for this packet
-            pkt_config = self.session_object.config['mapData'][packet.type]
+            pkt_config = self.session_object.config['mapConfig'][packet.type]['paths']
 
             # For each parameter configured, find the value under this path
             for key, path in pkt_config.items():
@@ -46,7 +46,7 @@ class Map(object):
                 # If there is path value configured
                 if path is not None:
                     # Get value of parameter under this path in current packet
-                    value = packet.values.get(path, (None, None))[0]
+                    value = packet.values.get(path, (None, None))
 
                     # If anything is found in the packet
                     if value is not None:
@@ -54,7 +54,7 @@ class Map(object):
                         # If there are no problems with the parameter or the only problem is with named-numbers, proceed
                         if path not in packet.problems.keys():
 
-                            pkt_value[key] = unit_conversion(value)
+                            pkt_value[key] = (unit_conversion(value[0]), value[1])
 
                         # If there are problems, do not add the packet
                         else:
@@ -66,7 +66,7 @@ class Map(object):
 
                 # If parameter has no defined path, set the value to None
                 else:
-                    pkt_value[key] = None
+                    pkt_value[key] = (None, None)
 
             # Append the map packet data to the array
             map_data.append(pkt_value)
@@ -89,7 +89,7 @@ class Map(object):
         if self.map_data:
             # Create a Folium map centered at first packet coordinates
             first_packet = self.map_data[0]
-            lat, lon = first_packet.get('latitude', 0), first_packet.get('longitude', 0)
+            lat, lon = first_packet.get('latitude', 0)[0], first_packet.get('longitude', 0)[0]
 
             self.map = folium.Map(location=[lat, lon], tiles='OpenStreetMap', zoom_start=12)
 
@@ -112,19 +112,20 @@ class Map(object):
                 # Color legend text based on assigned color
                 lgd_txt = f'<span style="color: {color};">{packet_type}</span>'
 
+                # Depending on group_markers parameter, create a MarkerCluster/FeatureGroup for message type
                 if group_markers:
                     layers[packet_type] = (MarkerCluster(name=lgd_txt, overlay=True, control=True, show=False), color)
                 else:
                     layers[packet_type] = (
-                    folium.FeatureGroup(name=lgd_txt, overlay=True, control=True, show=False), color)
+                        folium.FeatureGroup(name=lgd_txt, overlay=True, control=True, show=False), color)
 
                 layers[packet_type][0].add_to(self.map)
                 self.map.add_child(layers[packet_type][0])
 
                 stationIDs = []
                 for packet in self.map_data:
-                    if packet['stationID'] not in stationIDs and packet['type'] == packet_type:
-                        stationIDs.append(packet['stationID'])
+                    if packet['stationID'][0] not in stationIDs and packet['type'][0] == packet_type:
+                        stationIDs.append(packet['stationID'][0])
 
                 for stationID in stationIDs:
                     stationID_layers[f'{packet_type}_{stationID}'] = folium.plugins.FeatureGroupSubGroup(
@@ -133,15 +134,34 @@ class Map(object):
                     self.map.add_child(stationID_layers[f'{packet_type}_{stationID}'])
 
             for packet in self.map_data:
-                lat, lon = packet.get('latitude', 0), packet.get('longitude', 0)
+                try:
+                    lat, lon = packet['latitude'][0], packet['longitude'][0]
+                except KeyError:
+                    raise Exception('Packet has no latitude and longitude data')
 
-                popup_text = (f'<b>Type:</b> {packet.get("type", "N/A")}<br>'
-                              f'<b>Arrival time:</b> {packet.get("arrivalTime", "N/A")}<br>'
-                              f'<b>Station ID:</b> {packet.get("stationID", "N/A")}<br>'
-                              f'<b>Speed:</b> {packet.get("speed", "N/A")} km/h')
+                config = self.session_object.config['mapConfig'][packet.get("type")[0]]
 
-                folium.Marker([lat, lon], popup=popup_text, icon=folium.Icon(color=layers[packet['type']][1])).add_to(
-                    stationID_layers[f'{packet['type']}_{packet['stationID']}'])
+                # Create popup_text by joining all parameters of packet together in a fashionable way
+                popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value in
+                              packet.items()]
+                popup_text = '<br>'.join(popup_text)
+
+                # Set default icon
+                default_icon = 'envelope'
+
+                # Get parameter which will determine the icon from config, if none found, return default icon
+                try:
+                    icon_parameter = list(config['icon'].keys())[0]
+
+                    # Try to find icon for parameter
+                    icon = config['icon'][icon_parameter][packet[icon_parameter][1]]
+
+                except KeyError:
+                    icon = default_icon
+
+                folium.Marker([lat, lon], popup=popup_text, tooltip=packet.get("arrivalTime")[0].strftime(
+                    "%d. %m. %Y, %H:%M:%S"), icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon,prefix='fa')
+                              ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
 
             folium.LayerControl(collapsed=False).add_to(self.map)
 
