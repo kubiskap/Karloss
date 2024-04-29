@@ -131,6 +131,7 @@
 				"stationType": "DENM.denm.management.stationType",
 				"latitude": "DENM.denm.management.eventPosition.latitude",
 				"longitude": "DENM.denm.management.eventPosition.longitude"
+			}
 		}
 	}
 }
