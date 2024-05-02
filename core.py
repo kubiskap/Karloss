@@ -141,7 +141,10 @@ class PacketAnalyser(object):
                 # If packet is not in cache dir, import and save it
                 else:
                     pkt_content, pkt_type = import_pkt()
-                    pkt_object = Packet(msg_type=pkt_type, content=pkt_content, arrival_time=pkt.sniff_time)
+                    if 'Malformed' not in pkt_type:
+                        pkt_object = Packet(msg_type=pkt_type, content=pkt_content, arrival_time=pkt.sniff_time)
+                    else:
+                        pkt_object = Packet(msg_type='Malformed packet', content=pkt_content, arrival_time=pkt.sniff_time)
 
                     self.__cache_action(packet_file, 'w', pkt_object)
 

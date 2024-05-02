@@ -28,6 +28,8 @@ class ItsMessage(object):
             return {self.msg_name: compiled_dict.decode(self.msg_name, encoded, check_constraints=False)}
         except asn1tools.DecodeError or asn1tools.ConstraintsError as ASNerror:
             return f'{self.msg_name} {repr(ASNerror).split('(')[0]}({str(ASNerror)})'
+        except Exception as OtherError:
+            return f'Malformed packet: {OtherError}'
 
     def rebuild_asn(self, parameter_name: str, parameter_path=None) -> dict:
         if parameter_path is None:
