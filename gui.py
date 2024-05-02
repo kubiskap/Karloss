@@ -208,7 +208,7 @@ class PacketAnalyzerApp:
         # Read configured message types from config
         with open(self.config_file, 'r') as f:
             config = json.load(f)
-        types_configured = list(config.get('mapData', {}).keys())
+        types_configured = list(config.get('mapConfig', {}).keys())
 
         # Prompt user to select types to plot from configured types
         types_selected, markercluster = map_configuration_window(types_configured)
