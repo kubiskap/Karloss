@@ -102,10 +102,10 @@
 				}
 			},
 			"paths": {
-				"stationID": "CAM.header.stationID",
-				"stationType": "CAM.cam.camParameters.basicContainer.stationType",
 				"latitude": "CAM.cam.camParameters.basicContainer.referencePosition.latitude", 
 				"longitude": "CAM.cam.camParameters.basicContainer.referencePosition.longitude",
+				"stationID": "CAM.header.stationID",
+				"stationType": "CAM.cam.camParameters.basicContainer.stationType",
 				"speed": "CAM.cam.camParameters.highFrequencyContainer.basicVehicleContainerHighFrequency.speed.speedValue"
 			}
 		},
@@ -127,10 +127,10 @@
 				}
 			},
 			"paths": {
-				"stationID": "DENM.header.stationID",
-				"stationType": "DENM.denm.management.stationType",
 				"latitude": "DENM.denm.management.eventPosition.latitude",
-				"longitude": "DENM.denm.management.eventPosition.longitude"
+				"longitude": "DENM.denm.management.eventPosition.longitude",
+				"stationID": "DENM.header.stationID",
+				"stationType": "DENM.denm.management.stationType"
 			}
 		}
 	}
