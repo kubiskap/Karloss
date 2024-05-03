@@ -49,7 +49,7 @@ class Map(object):
                     value = packet.values.get(path, (None, None))
 
                     # If anything is found in the packet
-                    if value is not None:
+                    if value[0] is not None:
 
                         # If there are no problems with the parameter or the only problem is with named-numbers, proceed
                         if path not in packet.problems.keys():
