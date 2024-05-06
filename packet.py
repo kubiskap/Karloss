@@ -2,7 +2,7 @@ import jsonpath_ng
 
 
 class Packet(object):
-    def __init__(self, msg_type, content, arrival_time):
+    def __init__(self, msg_type, content, arrival_time=None):
         def process_packet(input_dict):
             """
             Internal method to convert the raw decoded packet into a true dictionary.
@@ -56,10 +56,11 @@ class Packet(object):
         self.state = 'Not analysed'
 
         # Initiate attributes used for packet analysis results
-        self.analysed = {}
-        self.values = {}
-        self.summary = {}
-        self.problems = {}
+        if self.type not in ['Malformed', 'Non-C-ITS packet', 'Unknown C-ITS message']:
+            self.analysed = {}
+            self.values = {}
+            self.summary = {}
+            self.problems = {}
 
     def analyse_packet(self, asn_dictionary: dict):
         def recursive_parameters(packet: dict, path=None):
