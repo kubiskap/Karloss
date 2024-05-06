@@ -104,14 +104,14 @@ class PacketAnalyser(object):
             Distinguish between C-ITS, other packets, and malformed packets and return packet data and packet type.
             """
             if 'ITS' in str(pkt.layers):
-                try:
-                    msg_object = self.configured_msgs.get(pkt.btpb.dstport)
-                except KeyError:
-                    return None, 'Unknown C-ITS message'
+                msg_object = self.configured_msgs.get(pkt.btpb.dstport)
+
+                if msg_object is None:
+                    return Packet(msg_type='Unknown C-ITS message', content=None, arrival_time=pkt.sniff_time)
                 else:
-                    return msg_object.decode(bytes.fromhex(pkt.its_raw.value)), msg_object.msg_name
+                    return msg_object.decode(bytes.fromhex(pkt.its_raw.value))
             else:
-                return None, 'Non-C-ITS packet'
+                return Packet(msg_type='Non-C-ITS packet', content=None, arrival_time=pkt.sniff_time)
 
         # Add input_file to method attributes
         self.input_file = input_file
@@ -140,11 +140,7 @@ class PacketAnalyser(object):
 
                 # If packet is not in cache dir, import and save it
                 else:
-                    pkt_content, pkt_type = import_pkt()
-                    if 'Malformed' not in pkt_type:
-                        pkt_object = Packet(msg_type=pkt_type, content=pkt_content, arrival_time=pkt.sniff_time)
-                    else:
-                        pkt_object = Packet(msg_type='Malformed packet', content=pkt_content, arrival_time=pkt.sniff_time)
+                    pkt_object = import_pkt()
 
                     self.__cache_action(packet_file, 'w', pkt_object)
 
