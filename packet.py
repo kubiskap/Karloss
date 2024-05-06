@@ -1,3 +1,4 @@
+import re
 import jsonpath_ng
 
 
@@ -147,7 +148,7 @@ class Packet(object):
 
                             if value in asn['named-numbers'].values():
                                 extended_value[1] = list(asn['named-numbers'].keys())[
-                                                      list(asn['named-numbers'].values()).index(value)]
+                                                    list(asn['named-numbers'].values()).index(value)]
 
                                 if value == asn['named-numbers'].get('unavailable'):
                                     problems.append(Problem(0, 'Value is unavailable (named-numbers).'))
@@ -381,30 +382,35 @@ class Packet(object):
 
             # There was a problem during decoding, in this case the data value type will be a string
             elif isinstance(self.data, str):
-                if 'DecodeError' in self.data or 'ConstraintError' in self.data:
+                # Set state to Error
+                self.state = 'Error'
 
-                    # Split the string into several substrings, so that we can provide accurate output
-                    splitstring = self.data.split('(')
-                    error_type = splitstring[0]
+                # Split the string into several substrings, so that we can provide accurate output
+                regex = r'^(.*?)\((.*?)\)'
+                matches = re.search(regex, self.data)
 
-                    split_splitstring = splitstring[1].split(': ')
-                    faulty_parameter_path = split_splitstring[0]
-                    problem_description = split_splitstring[1]
+                error_type = matches.group(1)
+                error_message = matches.group(2).split(': ', 1)
 
-                    # Convert path for summary
-                    path_converted, asn_path = convert_item_path(faulty_parameter_path.split('.'))
-                    summary_key = '.'.join(path_converted)
+                if len(error_message) == 2:
+                    error_param = error_message[0]
+                    error_desc = error_message[1]
 
-                    # Add to summary
-                    if summary_key in self.summary:
-                        self.summary[summary_key][2] += 1
-                    else:
-                        self.summary[summary_key] = [0, 0, 1]
+                else:
+                    error_param = self.type
+                    error_desc = error_message[0]
 
-                    # Add to problems and analysed
-                    self.analysed[faulty_parameter_path] = ('Error', problem_description)
-                    self.problems[faulty_parameter_path] = {'Warnings': None,
-                                                            'Errors': [f'{error_type}: {problem_description}']}
+                # Convert path for summary
+                path_converted, asn_path = convert_item_path(error_param.split('.'))
+                summary_key = '.'.join(path_converted)
+
+                # Add to summary
+                self.summary[summary_key] = [0, 0, 1]
+
+                # Add to problems and analysed
+                self.analysed[error_param] = ('Error', f'{error_type}: {error_desc}')
+                self.problems[error_param] = {'Warnings': None,
+                                                        'Errors': [f'{error_type}: {error_desc}']}
 
             else:
                 raise TypeError(f'Value data type not dict or string.')
