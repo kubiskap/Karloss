@@ -1,5 +1,6 @@
 import asn1tools
 from collections import ChainMap
+from packet import Packet
 
 
 class ItsMessage(object):
@@ -20,16 +21,25 @@ class ItsMessage(object):
 
     def decode(self, encoded, encoding_type='uper'):
         """
-        Method used to decode extracted encoded data from pyshark using asn1tools and ASN.1 specification.
+        Method used to decode extracted encoded data from pyshark using asn1tools and ASN.1 specification. Returns
         """
 
+        # Compile the dictionary
         compiled_dict = asn1tools.compile_dict(self.its_dictionary, encoding_type)
+
+        msg_type, asn = self.msg_name, self.asn_rebuilt[self.msg_name]
+
         try:
-            return {self.msg_name: compiled_dict.decode(self.msg_name, encoded, check_constraints=False)}
+            content = compiled_dict.decode(self.msg_name, encoded, check_constraints=False)
+
         except asn1tools.DecodeError or asn1tools.ConstraintsError as ASNerror:
-            return f'{self.msg_name} {repr(ASNerror).split('(')[0]}({str(ASNerror)})'
+            content = f'{repr(ASNerror).split('(')[0]}({str(ASNerror)})'
+
         except Exception as OtherError:
-            return f'Malformed packet: {OtherError}'
+            msg_type = 'Malformed'
+            content = f'{repr(OtherError).split('(')[0]}({str(OtherError)})'
+
+        return msg_type, asn, content
 
     def rebuild_asn(self, parameter_name: str, parameter_path=None) -> dict:
         if parameter_path is None:

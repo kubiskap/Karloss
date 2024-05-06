@@ -32,6 +32,8 @@ class PacketAnalyser(object):
         except:
             raise Exception('Config syntax invalid. Make sure your json config has valid syntax.')
 
+        self.__ignored_packet_types = ['Malformed', 'Non-C-ITS', 'Unknown C-ITS']
+
         # Establish ItsMessage object for each message type configured
         self.configured_msgs = {key: ItsMessage(asn_files=value['asnFiles'], msg_name=value['msgName'])
                                 for key, value in self.config['msgPorts'].items()}
@@ -104,14 +106,19 @@ class PacketAnalyser(object):
             Distinguish between C-ITS, other packets, and malformed packets and return packet data and packet type.
             """
             if 'ITS' in str(pkt.layers):
-                try:
-                    msg_object = self.configured_msgs.get(pkt.btpb.dstport)
-                except KeyError:
-                    return None, 'Unknown C-ITS message'
+                msg_object = self.configured_msgs.get(pkt.btpb.dstport)
+
+                if msg_object is None:
+                    return Packet(msg_type='Unknown C-ITS', ignored_types=self.__ignored_packet_types,
+                                  content=None, arrival_time=pkt.sniff_time)
                 else:
-                    return msg_object.decode(bytes.fromhex(pkt.its_raw.value)), msg_object.msg_name
+                    msg_type, asn, content = msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value))
+
+                    return Packet(msg_type=msg_type, ignored_types=self.__ignored_packet_types,
+                                  content=content, arrival_time=pkt.sniff_time, asn=asn)
             else:
-                return None, 'Non-C-ITS packet'
+                return Packet(msg_type='Non-C-ITS', ignored_types=self.__ignored_packet_types,
+                              content=None, arrival_time=pkt.sniff_time)
 
         # Add input_file to method attributes
         self.input_file = input_file
@@ -140,11 +147,7 @@ class PacketAnalyser(object):
 
                 # If packet is not in cache dir, import and save it
                 else:
-                    pkt_content, pkt_type = import_pkt()
-                    if 'Malformed' not in pkt_type:
-                        pkt_object = Packet(msg_type=pkt_type, content=pkt_content, arrival_time=pkt.sniff_time)
-                    else:
-                        pkt_object = Packet(msg_type='Malformed packet', content=pkt_content, arrival_time=pkt.sniff_time)
+                    pkt_object = import_pkt()
 
                     self.__cache_action(packet_file, 'w', pkt_object)
 
@@ -210,15 +213,11 @@ class PacketAnalyser(object):
 
                 # If not present in analysed cache, analyse it and save it into the cache
                 elif not cache_present[idx]:
-                    time_packet_start = datetime.datetime.now()
+                    if pkt.type not in self.__ignored_packet_types:
+                        time_packet_start = datetime.datetime.now()
 
-                    # Get asn_rebuilt for packet type
-                    pkt_asn = [msg.asn_rebuilt for msg in self.configured_msgs.values() if pkt.type == msg.msg_name]
-
-                    # If ASN for this message type has been found, proceed with analysis
-                    if pkt_asn:
                         # Analyse packet
-                        pkt.analyse_packet(pkt_asn[0])
+                        pkt.analyse_packet()
 
                         time_packet_end = datetime.datetime.now()
 
@@ -229,14 +228,7 @@ class PacketAnalyser(object):
                             f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
                             f'{(time_packet_end - time_packet_start).total_seconds():.1f} seconds.')
                     else:
-                        time_packet_end = datetime.datetime.now()
-
-                        # Save not supported packet into analysed cache
-                        self.__cache_action(file, 'w', pkt)
-
-                        self.log_message(
-                            f'Packet {idx + 1}/{len(self.packets)} was not analysed '
-                            f'({(time_packet_end - time_packet_start).total_seconds()} s) -- {pkt.type}.')
+                        self.log_message(f'Skipping {pkt.type} packet {idx + 1}/{len(self.packets)}.')
 
             # Update state
             self.state = 'Analysis complete'
@@ -325,11 +317,11 @@ class PacketAnalyser(object):
                     values_val = packet.values.get(parameter, ('Not found', None))
 
                     parameters[parameter] = {
-                            'value': values_val[0],
-                            'namedNum': values_val[1],
-                            'state': analysed_val[0],
-                            'problems': analysed_val[1]
-                        }
+                        'value': values_val[0],
+                        'namedNum': values_val[1],
+                        'state': analysed_val[0],
+                        'problems': analysed_val[1]
+                    }
 
                 # Join desired packet parameters into one dict
                 json_packet = {

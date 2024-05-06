@@ -1,8 +1,9 @@
+import re
 import jsonpath_ng
 
 
 class Packet(object):
-    def __init__(self, msg_type, content, arrival_time):
+    def __init__(self, msg_type, content, ignored_types, state='Not analysed', arrival_time=None, asn=None):
         def process_packet(input_dict):
             """
             Internal method to convert the raw decoded packet into a true dictionary.
@@ -50,18 +51,21 @@ class Packet(object):
             return output_dict
 
         self.arrival_time = arrival_time
-
-        self.data = process_packet(content) if isinstance(content, dict) else content
         self.type = msg_type
-        self.state = 'Not analysed'
+        self.state = state
+
+        if content is not None:
+            self.data = process_packet(content) if isinstance(content, dict) else content
 
         # Initiate attributes used for packet analysis results
-        self.analysed = {}
-        self.values = {}
-        self.summary = {}
-        self.problems = {}
+        if self.type not in ignored_types:
+            self.asn = asn
+            self.analysed = {}
+            self.values = {}
+            self.summary = {}
+            self.problems = {}
 
-    def analyse_packet(self, asn_dictionary: dict):
+    def analyse_packet(self):
         def recursive_parameters(packet: dict, path=None):
             """
             Generator used to iterate through every parameter of the packet in "analyse_packet" function.
@@ -77,7 +81,7 @@ class Packet(object):
                         yield from recursive_parameters(item, path + [key] + [index])
                 yield path + [key], key, value
 
-        def convert_item_path(input_path: list) -> tuple[list, str]:
+        def convert_item_path(input_path: list):
             """
             Sub-function that converts path containing any "listItem" keys. Determines type of item based on superior
             parameter and replaces each "listItem" with the parameter in specification of superior parameter (which should
@@ -92,7 +96,7 @@ class Packet(object):
                 for path_idx, path_item in enumerate(path_converted):
                     if path_item.startswith('listItem') and not path_converted[path_idx - 1].startswith('listItem'):
                         asn_path.append('element')
-                        matches_element = jsonpath_ng.parse("$." + ".".join(asn_path)).find(asn_dictionary)
+                        matches_element = jsonpath_ng.parse("$." + ".".join(asn_path)).find(self.asn)
                         path_converted[path_idx] = list(matches_element[0].value.keys())[0]
                     asn_path.append(path_converted[path_idx])
             else:
@@ -144,7 +148,7 @@ class Packet(object):
 
                             if value in asn['named-numbers'].values():
                                 extended_value[1] = list(asn['named-numbers'].keys())[
-                                                      list(asn['named-numbers'].values()).index(value)]
+                                                    list(asn['named-numbers'].values()).index(value)]
 
                                 if value == asn['named-numbers'].get('unavailable'):
                                     problems.append(Problem(0, 'Value is unavailable (named-numbers).'))
@@ -326,7 +330,7 @@ class Packet(object):
                     problems = []
 
                     # Find the asn definition of the parameter in asn_dictionary and deal with ASN related errors
-                    asn_matches = jsonpath_ng.parse("$." + ".".join(asn_path)).find(asn_dictionary)
+                    asn_matches = jsonpath_ng.parse("$." + ".".join(asn_path)).find(self.asn)
                     if not asn_matches:
                         # Parameter not found in ASN dictionary
                         problems.append(
@@ -378,34 +382,35 @@ class Packet(object):
 
             # There was a problem during decoding, in this case the data value type will be a string
             elif isinstance(self.data, str):
-                # Set state to error
+                # Set state to Error
                 self.state = 'Error'
 
                 # Split the string into several substrings, so that we can provide accurate output
-                splitstring = self.data.split('(')
-                error_type = splitstring[0]
+                regex = r'^(.*?)\((.*?)\)'
+                matches = re.search(regex, self.data)
 
-                split_splitstring = splitstring[1].split(': ')
-                faulty_parameter_path = split_splitstring[0]
-                problem_description = split_splitstring[1]
+                error_type = matches.group(1)
+                error_message = matches.group(2).split(': ', 1)
+
+                if len(error_message) == 2:
+                    error_param = error_message[0]
+                    error_desc = error_message[1]
+
+                else:
+                    error_param = self.type
+                    error_desc = error_message[0]
 
                 # Convert path for summary
-                path_converted, asn_path = convert_item_path(faulty_parameter_path.split('.'))
+                path_converted, asn_path = convert_item_path(error_param.split('.'))
                 summary_key = '.'.join(path_converted)
 
                 # Add to summary
-                if summary_key in self.summary:
-                    self.summary[summary_key][2] += 1
-                else:
-                    self.summary[summary_key] = [0, 0, 1]
+                self.summary[summary_key] = [0, 0, 1]
 
                 # Add to problems and analysed
-                self.analysed[faulty_parameter_path] = ('Error', problem_description)
-                self.problems[faulty_parameter_path] = {'Warnings': None,
-                                                        'Errors': [f'{error_type}: {problem_description}']}
+                self.analysed[error_param] = ('Error', f'{error_type}: {error_desc}')
+                self.problems[error_param] = {'Warnings': None,
+                                                        'Errors': [f'{error_type}: {error_desc}']}
 
             else:
                 raise TypeError(f'Value data type not dict or string.')
-
-        else:
-            print('Packet has already been analysed.')
