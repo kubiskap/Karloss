@@ -33,11 +33,11 @@ class ItsMessage(object):
             content = compiled_dict.decode(self.msg_name, encoded, check_constraints=False)
 
         except asn1tools.DecodeError or asn1tools.ConstraintsError as ASNerror:
-            content = f'{self.msg_name} {repr(ASNerror).split('(')[0]}({str(ASNerror)})'
+            content = f'{repr(ASNerror).split('(')[0]}({str(ASNerror)})'
 
         except Exception as OtherError:
             msg_type = 'Malformed'
-            content = f'{self.msg_name} other error: {repr(OtherError)}'
+            content = f'{repr(OtherError).split('(')[0]}({str(OtherError)})'
 
         return msg_type, asn, content
 
