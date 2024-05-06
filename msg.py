@@ -29,15 +29,18 @@ class ItsMessage(object):
 
         try:
             msg_decoded = compiled_dict.decode(self.msg_name, encoded, check_constraints=False)
-            return Packet(msg_type=self.msg_name, content=msg_decoded, arrival_time=arrival_time)
+            return Packet(msg_type=self.msg_name, content=msg_decoded,
+                          arrival_time=arrival_time, asn=self.asn_rebuilt[self.msg_name])
 
         except asn1tools.DecodeError or asn1tools.ConstraintsError as ASNerror:
             decode_error = f'{self.msg_name} {repr(ASNerror).split('(')[0]}({str(ASNerror)})'
-            return Packet(msg_type=self.msg_name, content=decode_error, arrival_time=arrival_time)
+            return Packet(msg_type=self.msg_name, content=decode_error, state='Error',
+                          arrival_time=arrival_time, asn=self.asn_rebuilt[self.msg_name])
 
         except Exception as OtherError:
             other_error = f'{self.msg_name} other error: {repr(OtherError)}'
-            return Packet(msg_type='Malformed', content=other_error, arrival_time=arrival_time)
+            return Packet(msg_type='Malformed', content=other_error, state='Error',
+                          arrival_time=arrival_time, asn=self.asn_rebuilt[self.msg_name])
 
     def rebuild_asn(self, parameter_name: str, parameter_path=None) -> dict:
         if parameter_path is None:
