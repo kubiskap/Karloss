@@ -2,7 +2,7 @@ import jsonpath_ng
 
 
 class Packet(object):
-    def __init__(self, msg_type, content, state='Not analysed', arrival_time=None, asn=None):
+    def __init__(self, msg_type, content, ignored_types, state='Not analysed', arrival_time=None, asn=None):
         def process_packet(input_dict):
             """
             Internal method to convert the raw decoded packet into a true dictionary.
@@ -49,15 +49,15 @@ class Packet(object):
                     output_dict[key] = value
             return output_dict
 
-        self.__ignored_packet_types = ['Malformed', 'Non-C-ITS packet', 'Unknown C-ITS message']
-
         self.arrival_time = arrival_time
         self.type = msg_type
         self.state = state
 
-        # Initiate attributes used for packet analysis results
-        if self.type not in self.__ignored_packet_types:
+        if content is not None:
             self.data = process_packet(content) if isinstance(content, dict) else content
+
+        # Initiate attributes used for packet analysis results
+        if self.type not in ignored_types:
             self.asn = asn
             self.analysed = {}
             self.values = {}
@@ -80,7 +80,7 @@ class Packet(object):
                         yield from recursive_parameters(item, path + [key] + [index])
                 yield path + [key], key, value
 
-        def convert_item_path(input_path: list) -> tuple[list, str]:
+        def convert_item_path(input_path: list):
             """
             Sub-function that converts path containing any "listItem" keys. Determines type of item based on superior
             parameter and replaces each "listItem" with the parameter in specification of superior parameter (which should
@@ -316,7 +316,7 @@ class Packet(object):
                 self.state = 'OK' if self.state not in ['Error', 'Warning'] else self.state
                 return 'OK'
 
-        if self.type not in self.__ignored_packet_types and self.asn is not None and self.state == 'Not analysed':
+        if self.state == 'Not analysed':
             if isinstance(self.data, dict):
 
                 # Main loop over all parameters (using recursive_parameters generator)
@@ -408,6 +408,3 @@ class Packet(object):
 
             else:
                 raise TypeError(f'Value data type not dict or string.')
-
-        else:
-            print('Packet has already been analysed.')

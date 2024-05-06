@@ -32,6 +32,8 @@ class PacketAnalyser(object):
         except:
             raise Exception('Config syntax invalid. Make sure your json config has valid syntax.')
 
+        self.__ignored_packet_types = ['Malformed', 'Non-C-ITS', 'Unknown C-ITS']
+
         # Establish ItsMessage object for each message type configured
         self.configured_msgs = {key: ItsMessage(asn_files=value['asnFiles'], msg_name=value['msgName'])
                                 for key, value in self.config['msgPorts'].items()}
@@ -107,11 +109,16 @@ class PacketAnalyser(object):
                 msg_object = self.configured_msgs.get(pkt.btpb.dstport)
 
                 if msg_object is None:
-                    return Packet(msg_type='Unknown C-ITS message', content=None, arrival_time=pkt.sniff_time)
+                    return Packet(msg_type='Unknown C-ITS message', ignored_types=self.__ignored_packet_types,
+                                  content=None, arrival_time=pkt.sniff_time)
                 else:
-                    return msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value), arrival_time=pkt.sniff_time)
+                    msg_type, asn, content = msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value))
+
+                    return Packet(msg_type=msg_type, ignored_types=self.__ignored_packet_types,
+                                  content=content, arrival_time=pkt.sniff_time, asn=asn)
             else:
-                return Packet(msg_type='Non-C-ITS packet', content=None, arrival_time=pkt.sniff_time)
+                return Packet(msg_type='Non-C-ITS packet', ignored_types=self.__ignored_packet_types,
+                              content=None, arrival_time=pkt.sniff_time)
 
         # Add input_file to method attributes
         self.input_file = input_file
@@ -206,19 +213,22 @@ class PacketAnalyser(object):
 
                 # If not present in analysed cache, analyse it and save it into the cache
                 elif not cache_present[idx]:
-                    time_packet_start = datetime.datetime.now()
+                    if pkt.type not in self.__ignored_packet_types:
+                        time_packet_start = datetime.datetime.now()
 
-                    # Analyse packet
-                    pkt.analyse_packet()
+                        # Analyse packet
+                        pkt.analyse_packet()
 
-                    time_packet_end = datetime.datetime.now()
+                        time_packet_end = datetime.datetime.now()
 
-                    # Save packet into cache after analysis
-                    self.__cache_action(file, 'w', pkt)
+                        # Save packet into cache after analysis
+                        self.__cache_action(file, 'w', pkt)
 
-                    self.log_message(
-                        f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
-                        f'{(time_packet_end - time_packet_start).total_seconds():.1f} seconds.')
+                        self.log_message(
+                            f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
+                            f'{(time_packet_end - time_packet_start).total_seconds():.1f} seconds.')
+                    else:
+                        self.log_message(f'Skipping {pkt.type} packet {idx + 1}/{len(self.packets)}.')
 
             # Update state
             self.state = 'Analysis complete'
@@ -307,11 +317,11 @@ class PacketAnalyser(object):
                     values_val = packet.values.get(parameter, ('Not found', None))
 
                     parameters[parameter] = {
-                            'value': values_val[0],
-                            'namedNum': values_val[1],
-                            'state': analysed_val[0],
-                            'problems': analysed_val[1]
-                        }
+                        'value': values_val[0],
+                        'namedNum': values_val[1],
+                        'state': analysed_val[0],
+                        'problems': analysed_val[1]
+                    }
 
                 # Join desired packet parameters into one dict
                 json_packet = {
