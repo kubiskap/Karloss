@@ -2,7 +2,7 @@ import jsonpath_ng
 
 
 class Packet(object):
-    def __init__(self, msg_type, content, arrival_time=None):
+    def __init__(self, msg_type, content, state='Not analysed', arrival_time=None, asn=None):
         def process_packet(input_dict):
             """
             Internal method to convert the raw decoded packet into a true dictionary.
@@ -49,20 +49,22 @@ class Packet(object):
                     output_dict[key] = value
             return output_dict
 
-        self.arrival_time = arrival_time
+        self.__ignored_packet_types = ['Malformed', 'Non-C-ITS packet', 'Unknown C-ITS message']
 
-        self.data = process_packet(content) if isinstance(content, dict) else content
+        self.arrival_time = arrival_time
         self.type = msg_type
-        self.state = 'Not analysed'
+        self.state = state
 
         # Initiate attributes used for packet analysis results
-        if self.type not in ['Malformed', 'Non-C-ITS packet', 'Unknown C-ITS message']:
+        if self.type not in self.__ignored_packet_types:
+            self.data = process_packet(content) if isinstance(content, dict) else content
+            self.asn = asn
             self.analysed = {}
             self.values = {}
             self.summary = {}
             self.problems = {}
 
-    def analyse_packet(self, asn_dictionary: dict):
+    def analyse_packet(self):
         def recursive_parameters(packet: dict, path=None):
             """
             Generator used to iterate through every parameter of the packet in "analyse_packet" function.
@@ -93,7 +95,7 @@ class Packet(object):
                 for path_idx, path_item in enumerate(path_converted):
                     if path_item.startswith('listItem') and not path_converted[path_idx - 1].startswith('listItem'):
                         asn_path.append('element')
-                        matches_element = jsonpath_ng.parse("$." + ".".join(asn_path)).find(asn_dictionary)
+                        matches_element = jsonpath_ng.parse("$." + ".".join(asn_path)).find(self.asn)
                         path_converted[path_idx] = list(matches_element[0].value.keys())[0]
                     asn_path.append(path_converted[path_idx])
             else:
@@ -314,7 +316,7 @@ class Packet(object):
                 self.state = 'OK' if self.state not in ['Error', 'Warning'] else self.state
                 return 'OK'
 
-        if self.state == 'Not analysed':
+        if self.type not in self.__ignored_packet_types and self.asn is not None and self.state == 'Not analysed':
             if isinstance(self.data, dict):
 
                 # Main loop over all parameters (using recursive_parameters generator)
@@ -327,7 +329,7 @@ class Packet(object):
                     problems = []
 
                     # Find the asn definition of the parameter in asn_dictionary and deal with ASN related errors
-                    asn_matches = jsonpath_ng.parse("$." + ".".join(asn_path)).find(asn_dictionary)
+                    asn_matches = jsonpath_ng.parse("$." + ".".join(asn_path)).find(self.asn)
                     if not asn_matches:
                         # Parameter not found in ASN dictionary
                         problems.append(
@@ -379,31 +381,30 @@ class Packet(object):
 
             # There was a problem during decoding, in this case the data value type will be a string
             elif isinstance(self.data, str):
-                # Set state to error
-                self.state = 'Error'
+                if 'DecodeError' in self.data or 'ConstraintError' in self.data:
 
-                # Split the string into several substrings, so that we can provide accurate output
-                splitstring = self.data.split('(')
-                error_type = splitstring[0]
+                    # Split the string into several substrings, so that we can provide accurate output
+                    splitstring = self.data.split('(')
+                    error_type = splitstring[0]
 
-                split_splitstring = splitstring[1].split(': ')
-                faulty_parameter_path = split_splitstring[0]
-                problem_description = split_splitstring[1]
+                    split_splitstring = splitstring[1].split(': ')
+                    faulty_parameter_path = split_splitstring[0]
+                    problem_description = split_splitstring[1]
 
-                # Convert path for summary
-                path_converted, asn_path = convert_item_path(faulty_parameter_path.split('.'))
-                summary_key = '.'.join(path_converted)
+                    # Convert path for summary
+                    path_converted, asn_path = convert_item_path(faulty_parameter_path.split('.'))
+                    summary_key = '.'.join(path_converted)
 
-                # Add to summary
-                if summary_key in self.summary:
-                    self.summary[summary_key][2] += 1
-                else:
-                    self.summary[summary_key] = [0, 0, 1]
+                    # Add to summary
+                    if summary_key in self.summary:
+                        self.summary[summary_key][2] += 1
+                    else:
+                        self.summary[summary_key] = [0, 0, 1]
 
-                # Add to problems and analysed
-                self.analysed[faulty_parameter_path] = ('Error', problem_description)
-                self.problems[faulty_parameter_path] = {'Warnings': None,
-                                                        'Errors': [f'{error_type}: {problem_description}']}
+                    # Add to problems and analysed
+                    self.analysed[faulty_parameter_path] = ('Error', problem_description)
+                    self.problems[faulty_parameter_path] = {'Warnings': None,
+                                                            'Errors': [f'{error_type}: {problem_description}']}
 
             else:
                 raise TypeError(f'Value data type not dict or string.')
