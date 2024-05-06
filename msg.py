@@ -36,7 +36,7 @@ class ItsMessage(object):
             return Packet(msg_type=self.msg_name, content=decode_error, arrival_time=arrival_time)
 
         except Exception as OtherError:
-            other_error = f'{self.msg_name} other Error: {repr(OtherError)}'
+            other_error = f'{self.msg_name} other error: {repr(OtherError)}'
             return Packet(msg_type='Malformed', content=other_error, arrival_time=arrival_time)
 
     def rebuild_asn(self, parameter_name: str, parameter_path=None) -> dict:
