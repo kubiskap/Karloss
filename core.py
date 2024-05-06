@@ -109,7 +109,7 @@ class PacketAnalyser(object):
                 if msg_object is None:
                     return Packet(msg_type='Unknown C-ITS message', content=None, arrival_time=pkt.sniff_time)
                 else:
-                    return msg_object.decode(bytes.fromhex(pkt.its_raw.value))
+                    return msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value), arrival_time=pkt.sniff_time)
             else:
                 return Packet(msg_type='Non-C-ITS packet', content=None, arrival_time=pkt.sniff_time)
 
@@ -208,31 +208,17 @@ class PacketAnalyser(object):
                 elif not cache_present[idx]:
                     time_packet_start = datetime.datetime.now()
 
-                    # Get asn_rebuilt for packet type
-                    pkt_asn = [msg.asn_rebuilt for msg in self.configured_msgs.values() if pkt.type == msg.msg_name]
+                    # Analyse packet
+                    pkt.analyse_packet()
 
-                    # If ASN for this message type has been found, proceed with analysis
-                    if pkt_asn:
-                        # Analyse packet
-                        pkt.analyse_packet(pkt_asn[0])
+                    time_packet_end = datetime.datetime.now()
 
-                        time_packet_end = datetime.datetime.now()
+                    # Save packet into cache after analysis
+                    self.__cache_action(file, 'w', pkt)
 
-                        # Save packet into cache after analysis
-                        self.__cache_action(file, 'w', pkt)
-
-                        self.log_message(
-                            f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
-                            f'{(time_packet_end - time_packet_start).total_seconds():.1f} seconds.')
-                    else:
-                        time_packet_end = datetime.datetime.now()
-
-                        # Save not supported packet into analysed cache
-                        self.__cache_action(file, 'w', pkt)
-
-                        self.log_message(
-                            f'Packet {idx + 1}/{len(self.packets)} was not analysed '
-                            f'({(time_packet_end - time_packet_start).total_seconds()} s) -- {pkt.type}.')
+                    self.log_message(
+                        f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
+                        f'{(time_packet_end - time_packet_start).total_seconds():.1f} seconds.')
 
             # Update state
             self.state = 'Analysis complete'
