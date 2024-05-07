@@ -112,10 +112,13 @@ class PacketAnalyser(object):
                     return Packet(msg_type='Unknown C-ITS', ignored_types=self.__ignored_packet_types,
                                   content=None, arrival_time=pkt.sniff_time)
                 else:
-                    msg_type, asn, content = msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value))
+                    content = msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value))
 
-                    return Packet(msg_type=msg_type, ignored_types=self.__ignored_packet_types,
-                                  content=content, arrival_time=pkt.sniff_time, asn=asn)
+                    # Wrap the entire message into one big container
+                    content = {msg_object.msg_name: content}
+
+                    return Packet(msg_type=msg_object.msg_name, ignored_types=self.__ignored_packet_types,
+                                  content=content, arrival_time=pkt.sniff_time, asn=msg_object.asn_rebuilt)
             else:
                 return Packet(msg_type='Non-C-ITS', ignored_types=self.__ignored_packet_types,
                               content=None, arrival_time=pkt.sniff_time)

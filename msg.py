@@ -1,6 +1,5 @@
 import asn1tools
 from collections import ChainMap
-from packet import Packet
 
 
 class ItsMessage(object):
@@ -27,8 +26,6 @@ class ItsMessage(object):
         # Compile the dictionary
         compiled_dict = asn1tools.compile_dict(self.its_dictionary, encoding_type)
 
-        msg_type, asn = self.msg_name, self.asn_rebuilt[self.msg_name]
-
         try:
             content = compiled_dict.decode(self.msg_name, encoded, check_constraints=False)
 
@@ -39,7 +36,7 @@ class ItsMessage(object):
             msg_type = 'Malformed'
             content = f'{repr(OtherError).split('(')[0]}({str(OtherError)})'
 
-        return msg_type, asn, content
+        return content
 
     def rebuild_asn(self, parameter_name: str, parameter_path=None) -> dict:
         if parameter_path is None:
