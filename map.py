@@ -37,7 +37,7 @@ class Map(object):
         for packet in selected_packets:
 
             # Establish packet value
-            value = {'type': (packet.type, None), 'arrivalTime': (packet.arrival_time, None)}
+            pkt_value = {'type': (packet.type, None), 'arrivalTime': (packet.arrival_time, None)}
 
             # Get config for this packet
             pkt_config = self.session_object.config['mapConfig'][packet.type]['paths']
@@ -56,7 +56,7 @@ class Map(object):
                         # If there are no problems with the parameter or the only problem is with named-numbers, proceed
                         if path not in packet.problems.keys():
 
-                            value[key] = (unit_conversion(value[0]), value[1])
+                            pkt_value[key] = (unit_conversion(value[0]), value[1])
 
                         # If there are problems, do not add the packet
                         else:
@@ -68,13 +68,13 @@ class Map(object):
 
                 # If parameter has no defined path, set the value to None
                 else:
-                    value[key] = (None, None)
+                    pkt_value[key] = (None, None)
 
             # Get coordinates from the packet to use as a key in dictionary
-            key = value.get('latitude', (0, None))[0], value.get('longitude', (0, None))[0]
+            key = pkt_value.get('latitude', (0, None))[0], pkt_value.get('longitude', (0, None))[0]
 
             # Append the map packet data to the array
-            map_data[key] = value
+            map_data[key] = pkt_value
 
         return map_data
 
