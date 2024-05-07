@@ -7,9 +7,16 @@ import re
 
 
 class Map(object):
-    def __init__(self, session_object, packet_types: list):
+    def __init__(self,
+                 session_object,
+                 packet_types,
+                 default_icon='envelope',
+                 merged_icon='list'):
         self.session_object = session_object
         self.packet_types = packet_types
+        self.default_icon = default_icon
+        self.merged_icon = merged_icon
+
         self.map_data = self.__prepare_data()
         self.map = None
 
@@ -73,11 +80,11 @@ class Map(object):
             # Get coordinates from the packet to use as a key in dictionary
             key = pkt_value.get('latitude', (0, None))[0], pkt_value.get('longitude', (0, None))[0]
 
-            # Append the map packet data to the array
+            # Append the map packet data to the dictionary
             if key not in map_data:
-                map_data[key] = pkt_value
+                map_data[key] = [pkt_value]
             else:
-                map_data[key] = [map_data[key]] + [pkt_value]
+                map_data[key].append(pkt_value)
 
         return map_data
 
@@ -141,17 +148,22 @@ class Map(object):
                     stationID_layers[f'{packet_type}_{stationID}'].add_to(self.map)
                     self.map.add_child(stationID_layers[f'{packet_type}_{stationID}'])
 
-            if group_markers:
-                for coords, packet in self.map_data.items():
+            for coords, entry in self.map_data.items():
+
+                merged_popup_text = [f'<b>{len(entry)} records at the same location.</b>']
+                arrivalTimes = []
+
+                for packet in entry:
+                    # Get packet configuration
                     config = self.session_object.config['mapConfig'][packet.get("type")[0]]
 
                     # Create popup_text by joining all parameters of packet together in a fashionable way
-                    popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value in
-                                  packet.items()]
+                    popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value
+                                  in packet.items()]
                     popup_text = '<br>'.join(popup_text)
 
-                    # Set default icon
-                    default_icon = 'envelope'
+                    # Make tooltip text the formatted arrivalTime
+                    tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
 
                     # Get parameter which will determine the icon from config, if none found, return default icon
                     try:
@@ -161,12 +173,37 @@ class Map(object):
                         icon = config['icon'][icon_parameter][packet[icon_parameter][1]]
 
                     except KeyError:
-                        icon = default_icon
+                        # Set icon to default
+                        icon = self.default_icon
 
-                    folium.Marker(coords, popup=popup_text, tooltip=packet.get("arrivalTime")[0].strftime(
-                        "%d. %m. %Y, %H:%M:%S"),
-                                  icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
-                                  ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
+                    if len(entry) == 1 or group_markers:
+                        # If group_markers is true or there is only one entry at the location,
+                        # we don't need to merge datapoints at the same location, meaning we can plot the marker now...
+                        folium.Marker(coords, popup=popup_text, tooltip=tooltip_text,
+                                      icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
+                                      ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
+                    else:
+                        merged_popup_text.append(popup_text)
+                        arrivalTimes.append(packet.get('arrivalTime'))
+
+                if len(entry) > 1 and not group_markers:
+                    # If group_markers is false and there are more entries at the location,
+                    # proceed in adding merged datapoint into the map.
+
+                    # Sort the arrivalTimes list to get the timeframe of marker
+                    arrivalTimes.sort()
+                    first, last = arrivalTimes[0].strftime("%d. %m. %Y, %H:%M:%S"), arrivalTimes[-1].strftime("%d. %m. %Y, %H:%M:%S")
+                    tooltip_text = f'{first}-{last}'
+
+                    # Divide the popup text with horizontal lines
+                    merged_popup_text = '<hr>'.join(merged_popup_text)
+
+                    # Set icon to "Merged"
+                    icon = self.merged_icon
+
+                    # Add Marker to map with the 'Merged' icon
+                    folium.Marker(coords, popup=merged_popup_text, tooltip=tooltip_text, )
+
 
             folium.LayerControl(collapsed=False).add_to(self.map)
 
