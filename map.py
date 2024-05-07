@@ -74,7 +74,10 @@ class Map(object):
             key = pkt_value.get('latitude', (0, None))[0], pkt_value.get('longitude', (0, None))[0]
 
             # Append the map packet data to the array
-            map_data[key] = pkt_value
+            if key not in map_data:
+                map_data[key] = pkt_value
+            else:
+                map_data[key] = [map_data[key]] + [pkt_value]
 
         return map_data
 
@@ -138,31 +141,32 @@ class Map(object):
                     stationID_layers[f'{packet_type}_{stationID}'].add_to(self.map)
                     self.map.add_child(stationID_layers[f'{packet_type}_{stationID}'])
 
-            for coords, packet in self.map_data.items():
-                config = self.session_object.config['mapConfig'][packet.get("type")[0]]
+            if group_markers:
+                for coords, packet in self.map_data.items():
+                    config = self.session_object.config['mapConfig'][packet.get("type")[0]]
 
-                # Create popup_text by joining all parameters of packet together in a fashionable way
-                popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value in
-                              packet.items()]
-                popup_text = '<br>'.join(popup_text)
+                    # Create popup_text by joining all parameters of packet together in a fashionable way
+                    popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value in
+                                  packet.items()]
+                    popup_text = '<br>'.join(popup_text)
 
-                # Set default icon
-                default_icon = 'envelope'
+                    # Set default icon
+                    default_icon = 'envelope'
 
-                # Get parameter which will determine the icon from config, if none found, return default icon
-                try:
-                    icon_parameter = list(config['icon'].keys())[0]
+                    # Get parameter which will determine the icon from config, if none found, return default icon
+                    try:
+                        icon_parameter = list(config['icon'].keys())[0]
 
-                    # Try to find icon for parameter
-                    icon = config['icon'][icon_parameter][packet[icon_parameter][1]]
+                        # Try to find icon for parameter
+                        icon = config['icon'][icon_parameter][packet[icon_parameter][1]]
 
-                except KeyError:
-                    icon = default_icon
+                    except KeyError:
+                        icon = default_icon
 
-                folium.Marker(coords, popup=popup_text, tooltip=packet.get("arrivalTime")[0].strftime(
-                    "%d. %m. %Y, %H:%M:%S"),
-                              icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
-                              ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
+                    folium.Marker(coords, popup=popup_text, tooltip=packet.get("arrivalTime")[0].strftime(
+                        "%d. %m. %Y, %H:%M:%S"),
+                                  icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
+                                  ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
 
             folium.LayerControl(collapsed=False).add_to(self.map)
 
