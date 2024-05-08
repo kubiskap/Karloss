@@ -199,7 +199,7 @@ class Map(object):
                              f'{popup_text}</div>', width=250, height=250)
 
                     # Make tooltip text the formatted arrivalTime
-                    tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
+                    tooltip_text = packet.get("arrivalTime")[0].strftime("%d.%m.%Y %H:%M:%S")
 
                     # Get parameter which will determine the icon from config, if none found, return default icon
                     try:
@@ -241,11 +241,11 @@ class Map(object):
                         arrivalTimes = sorted([value[0] for value in merged_parameters.get('arrivalTime')])
 
                         if arrivalTimes[0].date() == arrivalTimes[-1].date():
-                            tooltip_text = (f'{arrivalTimes[0].strftime('%d. %m. %Y, %H:%M%:%S')}-'
-                                            f'{arrivalTimes[-1].strftime('%H:%M:%S')}')
+                            tooltip_text = (f'{arrivalTimes[0].strftime("%d.%m.%Y %H:%M:%S")}-'
+                                            f'{arrivalTimes[-1].strftime("%H:%M:%S")}')
                         else:
-                            tooltip_text = (f'{arrivalTimes[0].strftime('%d. %m. %Y, %H:%M%:%S')}-'
-                                            f'{arrivalTimes[-1].strftime('%d. %m. %Y, %H:%M%:%S')}')
+                            tooltip_text = (f'{arrivalTimes[0].strftime("%d.%m.%Y %H:%M:%S")}-'
+                                            f'{arrivalTimes[-1].strftime("%d.%m.%Y %H:%M:%S")}')
 
                         # Divide the popup text with horizontal lines
                         merged_popup_text = '<hr>'.join(merged_popup_text)
@@ -269,8 +269,7 @@ class Map(object):
                             icon = self.merged_icon
 
                         # Add Marker to map with the 'Merged' icon
-                        folium.Marker(coords, popup=folium.Popup(iframe, max_width=250),
-                                      tooltip=tooltip_text,
+                        folium.Marker(coords, popup=folium.Popup(iframe, max_width=250), tooltip=tooltip_text,
                                       icon=folium.Icon(color=layers[merged_parameters.get('type')[0][0]][1], icon=icon, prefix='fa')
                                       ).add_to(stationID_layers[f'{merged_parameters.get('type')[0][0]}_'
                                                                 f'{merged_parameters.get('stationID')[0][0]}'])
@@ -293,7 +292,7 @@ class Map(object):
                                      f'{popup_text}</div>', width=250, height=250)
 
                             # Make tooltip text the formatted arrivalTime
-                            tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
+                            tooltip_text = packet.get("arrivalTime")[0].strftime("%d.%m.%Y %H:%M:%S")
 
                             # Get parameter which will determine the icon from config, if none found, return default icon
                             try:
