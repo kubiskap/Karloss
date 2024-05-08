@@ -157,7 +157,7 @@ class Map(object):
             for coords, entry in self.map_data.items():
 
                 merged_popup_text = [f'<b>{len(entry)} records at the same location.</b>']
-                arrivalTimes = []
+                arrivalTimes, stationIDs, packetTypes = [], [], []
 
                 for packet in entry:
                     # Get packet configuration
@@ -190,26 +190,63 @@ class Map(object):
                                       ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
                     else:
                         merged_popup_text.append(popup_text)
-                        arrivalTimes.append(packet.get('arrivalTime'))
+                        arrivalTimes.append(packet.get('arrivalTime')[0])
+                        stationIDs.append(packet.get('stationID')[0])
+                        packetTypes.append(packet.get('type')[0])
 
+                # If group_markers is false and there are more entries at the location,
+                # proceed in adding merged datapoint into the map.
                 if len(entry) > 1 and not group_markers:
-                    # If group_markers is false and there are more entries at the location,
-                    # proceed in adding merged datapoint into the map.
 
-                    # Sort the arrivalTimes list to get the timeframe of marker
-                    arrivalTimes.sort()
-                    first, last = arrivalTimes[0].strftime("%d. %m. %Y, %H:%M:%S"), arrivalTimes[-1].strftime("%d. %m. %Y, %H:%M:%S")
-                    tooltip_text = f'{first}-{last}'
+                    # If the packets to be grouped are of the same stationID and packet type, proceed with grouping
+                    if len(set(stationIDs)) == 1 and len(set(packetTypes)) == 1:
 
-                    # Divide the popup text with horizontal lines
-                    merged_popup_text = '<hr>'.join(merged_popup_text)
+                        # Sort the arrivalTimes list to get the timeframe of marker
+                        arrivalTimes.sort()
+                        first, last = (arrivalTimes[0].strftime("%d. %m. %Y, %H:%M:%S"),
+                                       arrivalTimes[-1].strftime("%d. %m. %Y, %H:%M:%S"))
+                        tooltip_text = f'{first}-{last}'
 
-                    # Set icon to "Merged"
-                    icon = self.merged_icon
+                        # Divide the popup text with horizontal lines
+                        merged_popup_text = '<hr>'.join(merged_popup_text)
 
-                    # Add Marker to map with the 'Merged' icon
-                    folium.Marker(coords, popup=merged_popup_text, tooltip=tooltip_text, )
+                        # Set icon to "Merged"
+                        icon = self.merged_icon
 
+                        # Add Marker to map with the 'Merged' icon
+                        folium.Marker(coords, popup=merged_popup_text, tooltip=tooltip_text,
+                                      icon=folium.Icon(color=layers[packetTypes[0]][1], icon=icon, prefix='fa')
+                                      ).add_to(stationID_layers[f'{packetTypes[0]}_{stationIDs[0]}'])
+
+                    # If not, plot them individually
+                    else:
+                        for packet in entry:
+                            # Get packet configuration
+                            config = self.session_object.config['mapConfig'][packet.get("type")[0]]
+
+                            # Create popup_text by joining all parameters of packet together in a fashionable way
+                            popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for
+                                          key, value
+                                          in packet.items()]
+                            popup_text = '<br>'.join(popup_text)
+
+                            # Make tooltip text the formatted arrivalTime
+                            tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
+
+                            # Get parameter which will determine the icon from config, if none found, return default icon
+                            try:
+                                icon_parameter = list(config['icon'].keys())[0]
+
+                                # Try to find icon for parameter
+                                icon = config['icon'][icon_parameter][packet[icon_parameter][1]]
+
+                            except KeyError:
+                                # Set icon to default
+                                icon = self.default_icon
+
+                            folium.Marker(coords, popup=popup_text, tooltip=tooltip_text,
+                                          icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
+                                          ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
 
             folium.LayerControl(collapsed=False).add_to(self.map)
 
