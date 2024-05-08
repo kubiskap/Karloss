@@ -41,7 +41,7 @@ class Map(object):
 
         # Get map data from each selected packet
         map_data = {}
-        for packet in selected_packets:
+        for packet in list(selected_packets):
 
             # Establish packet value
             pkt_value = {'type': (packet.type, None), 'arrivalTime': (packet.arrival_time, None)}
@@ -49,6 +49,7 @@ class Map(object):
             # Get config for this packet
             pkt_config = self.session_object.config['mapConfig'][packet.type]['paths']
 
+            innerBreak = False
             # For each parameter configured, find the value under this path
             for key, path in pkt_config.items():
 
@@ -65,26 +66,31 @@ class Map(object):
 
                             pkt_value[key] = (unit_conversion(value[0]), value[1])
 
-                        # If there are problems, do not add the packet
+                        # If there are problems, remove the packet
                         else:
+                            selected_packets.remove(packet)
+                            innerBreak = True
                             break
 
-                    # If the parameter was not found, do not add the packet
+                    # If the parameter was not found, remove the packet
                     else:
+                        selected_packets.remove(packet)
+                        innerBreak = True
                         break
 
-                # If parameter has no defined path, set the value to None
+                # If parameter has no defined path, raise an Error
                 else:
-                    pkt_value[key] = (None, None)
+                    raise ValueError(f'Path of {key} parameter is not set in mapConfig.')
 
             # Get coordinates from the packet to use as a key in dictionary
             key = pkt_value.get('latitude', (0, None))[0], pkt_value.get('longitude', (0, None))[0]
 
-            # Append the map packet data to the dictionary
-            if key not in map_data:
-                map_data[key] = [pkt_value]
-            else:
-                map_data[key].append(pkt_value)
+            if not innerBreak:
+                # Append the map packet data to the dictionary
+                if key not in map_data:
+                    map_data[key] = [pkt_value]
+                else:
+                    map_data[key].append(pkt_value)
 
         return map_data
 
