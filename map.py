@@ -130,7 +130,7 @@ class Map(object):
                                           max_native_zoom=18,
                                           max_zoom=30,
                                           tiles='https://tileserver.memomaps.de/tilegen/{z}/{x}/{y}.png',
-                                          attr='Map <a href="https://memomaps.de/">memomaps.de</a>'
+                                          attr='Map <a href="https://memomaps.de/">memomaps.de</a> '
                                                '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, '
                                                'map data &copy; <a href="https://www.openstreetmap.org/copyright">'
                                                'OpenStreetMap</a> contributors')
