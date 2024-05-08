@@ -2,6 +2,7 @@ import folium
 from folium.plugins import MarkerCluster
 from folium.plugins import GroupedLayerControl
 from statistics import mean
+import branca
 import random
 import re
 
@@ -112,10 +113,33 @@ class Map(object):
             map_center = (mean([coord[0] for coord in self.map_data.keys()]),
                           mean([coord[1] for coord in self.map_data.keys()]))
 
-            self.map = folium.Map(location=map_center, tiles='OpenStreetMap', zoom_start=12)
+            # Add OpenStreetMap tile layer
+            layer_osm = folium.TileLayer(name='Open Street Map',
+                                         max_native_zoom=19,
+                                         max_zoom=30,
+                                         tiles='https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                         attr='&copy; <a href="https://www.openstreetmap.org/copyright">'
+                                              'OpenStreetMap</a> contributors')
+
+            # Establish map object
+            self.map = folium.Map(location=map_center, tiles=layer_osm, zoom_start = 12, max_zoom = 30)
+
+            # Add OPNVKarte tile layer
+            # Add OpenStreetMap tile layer
+            layer_opnv = folium.TileLayer(name='Public Transport Map',
+                                          max_native_zoom=18,
+                                          max_zoom=30,
+                                          tiles='https://tileserver.memomaps.de/tilegen/{z}/{x}/{y}.png',
+                                          attr='Map <a href="https://memomaps.de/">memomaps.de</a>'
+                                               '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, '
+                                               'map data &copy; <a href="https://www.openstreetmap.org/copyright">'
+                                               'OpenStreetMap</a> contributors')
+            self.map.add_child(layer_opnv)
 
             # Add ESRI World Imagery tile layer
             layer_esri = folium.TileLayer(name='ESRI World Imagery',
+                                          max_native_zoom=18,
+                                          max_zoom=30,
                                           tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery'
                                                 '/MapServer/tile/{z}/{y}/{x}',
                                           attr='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS,'
@@ -144,9 +168,10 @@ class Map(object):
                 self.map.add_child(layers[packet_type][0])
 
                 stationIDs = []
-                for packet in self.map_data.values():
-                    if packet['stationID'][0] not in stationIDs and packet['type'][0] == packet_type:
-                        stationIDs.append(packet['stationID'][0])
+                for entry in self.map_data.values():
+                    for packet in entry:
+                        if packet['stationID'][0] not in stationIDs and packet['type'][0] == packet_type:
+                            stationIDs.append(packet['stationID'][0])
 
                 for stationID in stationIDs:
                     stationID_layers[f'{packet_type}_{stationID}'] = folium.plugins.FeatureGroupSubGroup(
@@ -167,6 +192,11 @@ class Map(object):
                     popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value
                                   in packet.items()]
                     popup_text = '<br>'.join(popup_text)
+
+                    # Insert the popup text into an iframe to add a scrollbar to popup
+                    popup_text = branca.element.IFrame(
+                        html=popup_text,
+                        width=500, height=400)
 
                     # Make tooltip text the formatted arrivalTime
                     tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
@@ -210,11 +240,17 @@ class Map(object):
                         # Divide the popup text with horizontal lines
                         merged_popup_text = '<hr>'.join(merged_popup_text)
 
+                        # Insert the merged text into an iframe to add a scrollbar to popup
+                        merged_popup_text = branca.element.IFrame(
+                            html= merged_popup_text,
+                            width=500, height=400)
+
                         # Set icon to "Merged"
                         icon = self.merged_icon
 
                         # Add Marker to map with the 'Merged' icon
-                        folium.Marker(coords, popup=merged_popup_text, tooltip=tooltip_text,
+                        folium.Marker(coords, popup=folium.Popup(merged_popup_text, max_width=500),
+                                      tooltip=tooltip_text,
                                       icon=folium.Icon(color=layers[packetTypes[0]][1], icon=icon, prefix='fa')
                                       ).add_to(stationID_layers[f'{packetTypes[0]}_{stationIDs[0]}'])
 
@@ -229,6 +265,11 @@ class Map(object):
                                           key, value
                                           in packet.items()]
                             popup_text = '<br>'.join(popup_text)
+
+                            # Insert the popup text into an iframe to add a scrollbar to popup
+                            popup_text = branca.element.IFrame(
+                                html=popup_text,
+                                width=500, height=400)
 
                             # Make tooltip text the formatted arrivalTime
                             tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
