@@ -193,11 +193,6 @@ class Map(object):
                                   in packet.items()]
                     popup_text = '<br>'.join(popup_text)
 
-                    # Insert the popup text into an iframe to add a scrollbar to popup
-                    popup_text = branca.element.IFrame(
-                        html=popup_text,
-                        width=500, height=400)
-
                     # Make tooltip text the formatted arrivalTime
                     tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
 
@@ -215,6 +210,12 @@ class Map(object):
                     if len(entry) == 1 or group_markers:
                         # If group_markers is true or there is only one entry at the location,
                         # we don't need to merge datapoints at the same location, meaning we can plot the marker now...
+
+                        # Insert the popup text into an iframe to add a scrollbar to popup
+                        popup_text = branca.element.IFrame(
+                            html=popup_text,
+                            width=500, height=400)
+
                         folium.Marker(coords, popup=popup_text, tooltip=tooltip_text,
                                       icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
                                       ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
@@ -266,11 +267,6 @@ class Map(object):
                                           in packet.items()]
                             popup_text = '<br>'.join(popup_text)
 
-                            # Insert the popup text into an iframe to add a scrollbar to popup
-                            popup_text = branca.element.IFrame(
-                                html=popup_text,
-                                width=500, height=400)
-
                             # Make tooltip text the formatted arrivalTime
                             tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
 
@@ -284,6 +280,11 @@ class Map(object):
                             except KeyError:
                                 # Set icon to default
                                 icon = self.default_icon
+
+                            # Insert the popup text into an iframe to add a scrollbar to popup
+                            popup_text = branca.element.IFrame(
+                                html=popup_text,
+                                width=500, height=400)
 
                             folium.Marker(coords, popup=popup_text, tooltip=tooltip_text,
                                           icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
