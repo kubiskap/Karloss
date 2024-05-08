@@ -195,7 +195,7 @@ class Map(object):
 
                     # Insert the popup text into an iframe to add a scrollbar to popup
                     iframe = branca.element.IFrame(
-                        html=f'<div style="font: 12px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;">'
+                        html=f'<div style="font: 12px/1.5 \'Helvetica Neue\', Arial, Helvetica, sans-serif;">'
                              f'{popup_text}</div>', width=250, height=250)
 
                     # Make tooltip text the formatted arrivalTime
@@ -252,7 +252,7 @@ class Map(object):
 
                         # Insert the merged text into an iframe to add a scrollbar to popup
                         iframe = branca.element.IFrame(
-                            html=f'<div style="font: 12px/1.5 Helvetica Neue;">'
+                            html=f'<div style="font: 12px/1.5 \'Helvetica Neue\', Arial, Helvetica, sans-serif;">'
                                  f'{merged_popup_text}</div>', width=250, height=250)
 
                         # If an icon parameter in merged_packets has the same value, set the icon to the one configured
@@ -288,8 +288,8 @@ class Map(object):
 
                             # Insert the popup text into an iframe to add a scrollbar to popup
                             iframe = branca.element.IFrame(
-                                html=f'<div style="font: 12px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;">'
-                                     f'{popup_text}</div>', width=250, height=250)
+                                html=f'<div style="font: 12px/1.5 \'Helvetica Neue\', Arial, Helvetica, sans-serif;">'
+                                f'{popup_text}</div>', width=250, height=250)
 
                             # Make tooltip text the formatted arrivalTime
                             tooltip_text = packet.get("arrivalTime")[0].strftime("%d.%m.%Y %H:%M:%S")
