@@ -182,7 +182,7 @@ class Map(object):
             for coords, entry in self.map_data.items():
 
                 merged_popup_text = [f'<b>{len(entry)} records at the same location.</b>']
-                arrivalTimes, stationIDs, packetTypes = [], [], []
+                merged_parameters = {}
 
                 for packet in entry:
                     # Get packet configuration
@@ -192,6 +192,11 @@ class Map(object):
                     popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value
                                   in packet.items()]
                     popup_text = '<br>'.join(popup_text)
+
+                    # Insert the popup text into an iframe to add a scrollbar to popup
+                    iframe = branca.element.IFrame(
+                        html=f'<div style="font: 12px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;">'
+                             f'{popup_text}</div>', width=250, height=250)
 
                     # Make tooltip text the formatted arrivalTime
                     tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
@@ -211,49 +216,64 @@ class Map(object):
                         # If group_markers is true or there is only one entry at the location,
                         # we don't need to merge datapoints at the same location, meaning we can plot the marker now...
 
-                        # Insert the popup text into an iframe to add a scrollbar to popup
-                        popup_text = branca.element.IFrame(
-                            html=popup_text,
-                            width=500, height=400)
-
-                        folium.Marker(coords, popup=popup_text, tooltip=tooltip_text,
+                        folium.Marker(coords, popup=folium.Popup(iframe, max_width=250), tooltip=tooltip_text,
                                       icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
                                       ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
                     else:
                         merged_popup_text.append(popup_text)
-                        arrivalTimes.append(packet.get('arrivalTime')[0])
-                        stationIDs.append(packet.get('stationID')[0])
-                        packetTypes.append(packet.get('type')[0])
+
+                        for parameter, value in packet.items():
+                            if parameter in merged_parameters:
+                                merged_parameters[parameter].append(value)
+                            else:
+                                merged_parameters[parameter] = [value]
 
                 # If group_markers is false and there are more entries at the location,
                 # proceed in adding merged datapoint into the map.
                 if len(entry) > 1 and not group_markers:
 
                     # If the packets to be grouped are of the same stationID and packet type, proceed with grouping
-                    if len(set(stationIDs)) == 1 and len(set(packetTypes)) == 1:
+                    if len(set(merged_parameters.get('stationID'))) == 1 and len(set(merged_parameters.get('type'))) == 1:
+
+                        config = self.session_object.config['mapConfig'][merged_parameters.get("type")[0][0]]
 
                         # Sort the arrivalTimes list to get the timeframe of marker
-                        arrivalTimes.sort()
-                        first, last = (arrivalTimes[0].strftime("%d. %m. %Y, %H:%M:%S"),
-                                       arrivalTimes[-1].strftime("%d. %m. %Y, %H:%M:%S"))
-                        tooltip_text = f'{first}-{last}'
+                        arrivalTimes = sorted([value[0] for value in merged_parameters.get('arrivalTime')])
+
+                        if arrivalTimes[0].date() == arrivalTimes[-1].date():
+                            tooltip_text = (f'{arrivalTimes[0].strftime('%d. %m. %Y, %H:%M%:%S')}-'
+                                            f'{arrivalTimes[-1].strftime('%H:%M:%S')}')
+                        else:
+                            tooltip_text = (f'{arrivalTimes[0].strftime('%d. %m. %Y, %H:%M%:%S')}-'
+                                            f'{arrivalTimes[-1].strftime('%d. %m. %Y, %H:%M%:%S')}')
 
                         # Divide the popup text with horizontal lines
                         merged_popup_text = '<hr>'.join(merged_popup_text)
 
                         # Insert the merged text into an iframe to add a scrollbar to popup
-                        merged_popup_text = branca.element.IFrame(
-                            html= merged_popup_text,
-                            width=500, height=400)
+                        iframe = branca.element.IFrame(
+                            html=f'<div style="font: 12px/1.5 Helvetica Neue;">'
+                                 f'{merged_popup_text}</div>', width=250, height=250)
 
-                        # Set icon to "Merged"
-                        icon = self.merged_icon
+                        # If an icon parameter in merged_packets has the same value, set the icon to the one configured
+                        icon_parameter = list(config['icon'].keys())[0]
+                        if len(set(merged_parameters.get(icon_parameter))) == 1:
+                            try:
+                                # Try to find icon for parameter
+                                icon = config['icon'][icon_parameter][merged_parameters.get(icon_parameter)[0][1]]
+                            except KeyError:
+                                # Set icon to default
+                                icon = self.default_icon
+                        else:
+                            # Else set icon to predefined "Merged" icon
+                            icon = self.merged_icon
 
                         # Add Marker to map with the 'Merged' icon
-                        folium.Marker(coords, popup=folium.Popup(merged_popup_text, max_width=500),
+                        folium.Marker(coords, popup=folium.Popup(iframe, max_width=250),
                                       tooltip=tooltip_text,
-                                      icon=folium.Icon(color=layers[packetTypes[0]][1], icon=icon, prefix='fa')
-                                      ).add_to(stationID_layers[f'{packetTypes[0]}_{stationIDs[0]}'])
+                                      icon=folium.Icon(color=layers[merged_parameters.get('type')[0][0]][1], icon=icon, prefix='fa')
+                                      ).add_to(stationID_layers[f'{merged_parameters.get('type')[0][0]}_'
+                                                                f'{merged_parameters.get('stationID')[0][0]}'])
 
                     # If not, plot them individually
                     else:
@@ -266,6 +286,11 @@ class Map(object):
                                           key, value
                                           in packet.items()]
                             popup_text = '<br>'.join(popup_text)
+
+                            # Insert the popup text into an iframe to add a scrollbar to popup
+                            iframe = branca.element.IFrame(
+                                html=f'<div style="font: 12px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;">'
+                                     f'{popup_text}</div>', width=250, height=250)
 
                             # Make tooltip text the formatted arrivalTime
                             tooltip_text = packet.get("arrivalTime")[0].strftime("%d. %m. %Y, %H:%M:%S")
@@ -281,12 +306,7 @@ class Map(object):
                                 # Set icon to default
                                 icon = self.default_icon
 
-                            # Insert the popup text into an iframe to add a scrollbar to popup
-                            popup_text = branca.element.IFrame(
-                                html=popup_text,
-                                width=500, height=400)
-
-                            folium.Marker(coords, popup=popup_text, tooltip=tooltip_text,
+                            folium.Marker(coords, popup=folium.Popup(iframe, max_width=250), tooltip=tooltip_text,
                                           icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
                                           ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
 
