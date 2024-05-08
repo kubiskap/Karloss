@@ -33,7 +33,7 @@ class Map(object):
 
         # Get map data from each selected packet
         map_data = []
-        for packet in selected_packets:
+        for packet in list(selected_packets):
             # Establish packet value
             pkt_value = {'type': (packet.type, None), 'arrivalTime': (packet.arrival_time, None)}
 
@@ -41,10 +41,12 @@ class Map(object):
             pkt_config = self.session_object.config['mapConfig'][packet.type]['paths']
 
             # For each parameter configured, find the value under this path
+            innerBreak = False
             for key, path in pkt_config.items():
 
                 # If there is path value configured
                 if path is not None:
+
                     # Get value of parameter under this path in current packet
                     value = packet.values.get(path, (None, None))
 
@@ -56,20 +58,25 @@ class Map(object):
 
                             pkt_value[key] = (unit_conversion(value[0]), value[1])
 
-                        # If there are problems, do not add the packet
+                        # If there are problems, remove the packet
                         else:
+                            selected_packets.remove(packet)
+                            innerBreak = True
                             break
 
-                    # If the parameter was not found, do not add the packet
+                    # If the parameter was not found, remove the packet
                     else:
+                        selected_packets.remove(packet)
+                        innerBreak = True
                         break
 
-                # If parameter has no defined path, set the value to None
+                # If parameter has no defined path, raise an error
                 else:
-                    pkt_value[key] = (None, None)
+                    raise ValueError(f'Path of {key} parameter is not set in mapConfig.')
 
-            # Append the map packet data to the array
-            map_data.append(pkt_value)
+            if not innerBreak:
+                # Append the map packet data to the array
+                map_data.append(pkt_value)
 
         return map_data
 
