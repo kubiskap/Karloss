@@ -20,6 +20,7 @@ class Map(object):
 
         self.map_data = self.__prepare_data()
         self.map = None
+        self.layers = {}
 
     def __prepare_data(self):
         def unit_conversion(value):
@@ -96,19 +97,8 @@ class Map(object):
         return map_data
 
     def create(self, group_markers=True):
-        def assign_color(used=[]):
-            defined = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'darkblue', 'darkgreen', 'cadetblue',
-                       'pink', 'lightblue', 'lightgreen', 'gray']
-            if set(defined) != set(used):
-                available_colors = [color for color in defined if color not in used]
-                color = available_colors[random.randint(0, len(available_colors) - 1)]
-                used.append(color)
-            else:
-                used = []
-                assign_color()
-            return used, color
 
-        if self.map_data:
+        def create_map():
             # Create a Folium map centered at average packet coordinates
             map_center = (mean([coord[0] for coord in self.map_data.keys()]),
                           mean([coord[1] for coord in self.map_data.keys()]))
@@ -122,7 +112,7 @@ class Map(object):
                                               'OpenStreetMap</a> contributors')
 
             # Establish map object
-            self.map = folium.Map(location=map_center, tiles=layer_osm, zoom_start = 12, max_zoom = 30)
+            self.map = folium.Map(location=map_center, tiles=layer_osm, zoom_start=12, max_zoom=30)
 
             # Add OPNVKarte tile layer
             # Add OpenStreetMap tile layer
@@ -147,10 +137,22 @@ class Map(object):
                                                'and the GIS User Community')
             self.map.add_child(layer_esri)
 
-            # Create separate feature groups for each message type and assign them random colors
+        def create_layers():
+            def assign_color(used=[]):
+                defined = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'darkblue', 'darkgreen', 'cadetblue',
+                           'pink', 'lightblue', 'lightgreen', 'gray']
+                if set(defined) != set(used):
+                    available_colors = [color for color in defined if color not in used]
+                    color = available_colors[random.randint(0, len(available_colors) - 1)]
+                    used.append(color)
+                else:
+                    used = []
+                    assign_color()
+                return used, color
+
+            # Create separate feature groups or marker clusters for each message type and assign them random colors
             used_colors = []
 
-            layers, stationID_layers = {}, {}
             for packet_type in self.packet_types:
                 used_colors, color = assign_color(used_colors)
 
@@ -159,14 +161,17 @@ class Map(object):
 
                 # Depending on group_markers parameter, create a MarkerCluster/FeatureGroup for message type
                 if group_markers:
-                    layers[packet_type] = (MarkerCluster(name=lgd_txt, overlay=True, control=True, show=False), color)
+                    self.layers[packet_type] = {'object': MarkerCluster(name=lgd_txt, overlay=True, control=True, show=False),
+                                                'color': color, 'subgroups': {}}
                 else:
-                    layers[packet_type] = (
-                        folium.FeatureGroup(name=lgd_txt, overlay=True, control=True, show=False), color)
+                    self.layers[packet_type] = {'object': folium.FeatureGroup(name=lgd_txt,
+                                                                              overlay=True, control=True, show=False),
+                                                'color': color, 'subgroups': {}}
 
-                layers[packet_type][0].add_to(self.map)
-                self.map.add_child(layers[packet_type][0])
+                self.layers[packet_type]['object'].add_to(self.map)
+                self.map.add_child(self.layers[packet_type]['object'])
 
+                # Create list of unique stationIDs present in packets
                 stationIDs = []
                 for entry in self.map_data.values():
                     for packet in entry:
@@ -174,150 +179,159 @@ class Map(object):
                             stationIDs.append(packet['stationID'][0])
 
                 for stationID in stationIDs:
-                    stationID_layers[f'{packet_type}_{stationID}'] = folium.plugins.FeatureGroupSubGroup(
-                        layers[packet_type][0], name=stationID, show=True)
-                    stationID_layers[f'{packet_type}_{stationID}'].add_to(self.map)
-                    self.map.add_child(stationID_layers[f'{packet_type}_{stationID}'])
+                    self.layers[packet_type]['subgroups'][stationID] = folium.plugins.FeatureGroupSubGroup(
+                        self.layers[packet_type]['object'], name=stationID, show=True)
+                    self.layers[packet_type]['subgroups'][stationID].add_to(self.map)
+                    self.map.add_child(self.layers[packet_type]['subgroups'][stationID])
 
-            for coords, entry in self.map_data.items():
-
-                merged_popup_text = [f'<b>{len(entry)} records at the same location.</b>']
-                merged_parameters = {}
-
-                for packet in entry:
-                    # Get packet configuration
-                    config = self.session_object.config['mapConfig'][packet.get("type")[0]]
-
-                    # Create popup_text by joining all parameters of packet together in a fashionable way
-                    popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value
-                                  in packet.items()]
-                    popup_text = '<br>'.join(popup_text)
+        def plot_data():
+            def plot_marker(marker_type, data, pkt_type=None, station_id=None):
+                def add_marker(popup_text, icon, pkt_type, station_id):
+                    # Get color based on layer
+                    color = self.layers[pkt_type]['color']
 
                     # Insert the popup text into an iframe to add a scrollbar to popup
                     iframe = branca.element.IFrame(
                         html=f'<div style="font: 12px/1.5 \'Helvetica Neue\', Arial, Helvetica, sans-serif;">'
                              f'{popup_text}</div>', width=250, height=250)
 
-                    # Make tooltip text the formatted arrivalTime
-                    tooltip_text = packet.get("arrivalTime")[0].strftime("%d.%m.%Y %H:%M:%S")
+                    # Add the marker
+                    folium.Marker(coords, popup=folium.Popup(iframe, max_width=250), tooltip=tooltip_text,
+                                  icon=folium.Icon(color=color, icon=icon, prefix='fa')
+                                  ).add_to(self.layers[pkt_type]['subgroups'][station_id])
+
+                if marker_type == 'individual' and isinstance(data, dict):
+                    pkt_type, station_id = data.get('type')[0], data.get('stationID')[0]
+
+                    # Get packet configuration
+                    pkt_config = self.session_object.config['mapConfig'][pkt_type]
 
                     # Get parameter which will determine the icon from config, if none found, return default icon
                     try:
-                        icon_parameter = list(config['icon'].keys())[0]
+                        icon_parameter = list(pkt_config['icon'].keys())[0]
 
                         # Try to find icon for parameter
-                        icon = config['icon'][icon_parameter][packet[icon_parameter][1]]
+                        icon = pkt_config['icon'][icon_parameter][data[icon_parameter][1]]
 
                     except KeyError:
                         # Set icon to default
                         icon = self.default_icon
 
-                    if len(entry) == 1 or group_markers:
-                        # If group_markers is true or there is only one entry at the location,
-                        # we don't need to merge datapoints at the same location, meaning we can plot the marker now...
+                    # Create popup_text by joining all parameters of packet together in a fashionable way
+                    popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for key, value
+                                  in data.items()]
+                    popup_text = '<br>'.join(popup_text)
 
-                        folium.Marker(coords, popup=folium.Popup(iframe, max_width=250), tooltip=tooltip_text,
-                                      icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
-                                      ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
-                    else:
-                        merged_popup_text.append(popup_text)
+                    # Make tooltip text the formatted arrivalTime
+                    tooltip_text = data.get("arrivalTime")[0].strftime("%d.%m.%Y %H:%M:%S")
 
-                        for parameter, value in packet.items():
+                    # Add marker to map
+                    add_marker(popup_text, icon, pkt_type, station_id)
+
+                elif marker_type == 'merged' and isinstance(data, list) and pkt_type is not None and station_id is not None:
+                    # Establish the popup
+                    popup_text = [f'<b>{len(data)} records at the same location.</b>']
+
+                    # Prepare dictionary for parameters of all packets as list
+                    merged_parameters = {}
+
+                    # For each packet in list, create popup text and
+                    for pkt in data:
+                        for parameter, value in pkt.items():
                             if parameter in merged_parameters:
                                 merged_parameters[parameter].append(value)
                             else:
                                 merged_parameters[parameter] = [value]
 
-                # If group_markers is false and there are more entries at the location,
-                # proceed in adding merged datapoint into the map.
-                if len(entry) > 1 and not group_markers:
+                        # Create popup_text by joining all parameters of packet together in a fashionable way
+                        pkt_popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for
+                                      key, value in pkt.items()]
+                        pkt_popup_text = '<br>'.join(pkt_popup_text)
 
-                    # If the packets to be grouped are of the same stationID and packet type, proceed with grouping
-                    if len(set(merged_parameters.get('stationID'))) == 1 and len(set(merged_parameters.get('type'))) == 1:
+                        popup_text.append(pkt_popup_text)
 
-                        config = self.session_object.config['mapConfig'][merged_parameters.get("type")[0][0]]
+                    # Sort the arrivalTimes list to get the timeframe of marker
+                    arrivalTimes = sorted([value[0] for value in merged_parameters.get('arrivalTime')])
 
-                        # Sort the arrivalTimes list to get the timeframe of marker
-                        arrivalTimes = sorted([value[0] for value in merged_parameters.get('arrivalTime')])
-
-                        if arrivalTimes[0].date() == arrivalTimes[-1].date():
-                            tooltip_text = (f'{arrivalTimes[0].strftime("%d.%m.%Y %H:%M:%S")}-'
-                                            f'{arrivalTimes[-1].strftime("%H:%M:%S")}')
-                        else:
-                            tooltip_text = (f'{arrivalTimes[0].strftime("%d.%m.%Y %H:%M:%S")}-'
-                                            f'{arrivalTimes[-1].strftime("%d.%m.%Y %H:%M:%S")}')
-
-                        # Divide the popup text with horizontal lines
-                        merged_popup_text = '<hr>'.join(merged_popup_text)
-
-                        # Insert the merged text into an iframe to add a scrollbar to popup
-                        iframe = branca.element.IFrame(
-                            html=f'<div style="font: 12px/1.5 \'Helvetica Neue\', Arial, Helvetica, sans-serif;">'
-                                 f'{merged_popup_text}</div>', width=250, height=250)
-
-                        # If an icon parameter in merged_packets has the same value, set the icon to the one configured
-                        icon_parameter = list(config['icon'].keys())[0]
-                        if len(set(merged_parameters.get(icon_parameter))) == 1:
-                            try:
-                                # Try to find icon for parameter
-                                icon = config['icon'][icon_parameter][merged_parameters.get(icon_parameter)[0][1]]
-                            except KeyError:
-                                # Set icon to default
-                                icon = self.default_icon
-                        else:
-                            # Else set icon to predefined "Merged" icon
-                            icon = self.merged_icon
-
-                        # Add Marker to map with the 'Merged' icon
-                        folium.Marker(coords, popup=folium.Popup(iframe, max_width=250), tooltip=tooltip_text,
-                                      icon=folium.Icon(color=layers[merged_parameters.get('type')[0][0]][1], icon=icon, prefix='fa')
-                                      ).add_to(stationID_layers[f'{merged_parameters.get('type')[0][0]}_'
-                                                                f'{merged_parameters.get('stationID')[0][0]}'])
-
-                    # If not, plot them individually
+                    # Format tooltip text (different format if day is the same for the first and last packet)
+                    if arrivalTimes[0].date() == arrivalTimes[-1].date():
+                        tooltip_text = (f'{arrivalTimes[0].strftime("%d.%m.%Y %H:%M:%S")}-'
+                                        f'{arrivalTimes[-1].strftime("%H:%M:%S")}')
                     else:
-                        for packet in entry:
-                            # Get packet configuration
-                            config = self.session_object.config['mapConfig'][packet.get("type")[0]]
+                        tooltip_text = (f'{arrivalTimes[0].strftime("%d.%m.%Y %H:%M:%S")}-'
+                                        f'{arrivalTimes[-1].strftime("%d.%m.%Y %H:%M:%S")}')
 
-                            # Create popup_text by joining all parameters of packet together in a fashionable way
-                            popup_text = [f'<b>{re.sub(r"(\w)([A-Z])", r"\1 \2", key).title()}</b>: {value[0]}' for
-                                          key, value
-                                          in packet.items()]
-                            popup_text = '<br>'.join(popup_text)
+                    # Join the popup text with horizontal lines
+                    popup_text = '<hr>'.join(popup_text)
 
-                            # Insert the popup text into an iframe to add a scrollbar to popup
-                            iframe = branca.element.IFrame(
-                                html=f'<div style="font: 12px/1.5 \'Helvetica Neue\', Arial, Helvetica, sans-serif;">'
-                                f'{popup_text}</div>', width=250, height=250)
+                    # If an icon parameter in merged_packets has the same value for all,
+                    # set the icon to the one configured
+                    config = self.session_object.config['mapConfig'][merged_parameters.get("type")[0][0]]
+                    icon_parameter = list(config['icon'].keys())[0]
+                    if len(set(merged_parameters.get(icon_parameter))) == 1:
+                        try:
+                            # Try to find icon for parameter
+                            icon = config['icon'][icon_parameter][merged_parameters.get(icon_parameter)[0][1]]
+                        except KeyError:
+                            # Set icon to default
+                            icon = self.default_icon
+                    else:
+                        # Else set icon to predefined "Merged" icon
+                        icon = self.merged_icon
 
-                            # Make tooltip text the formatted arrivalTime
-                            tooltip_text = packet.get("arrivalTime")[0].strftime("%d.%m.%Y %H:%M:%S")
+                    # Add Marker to map
+                    add_marker(popup_text, icon, pkt_type, station_id)
 
-                            # Get parameter which will determine the icon from config, if none found, return default icon
-                            try:
-                                icon_parameter = list(config['icon'].keys())[0]
+            for coords, entry in self.map_data.items():
 
-                                # Try to find icon for parameter
-                                icon = config['icon'][icon_parameter][packet[icon_parameter][1]]
+                if group_markers:
 
-                            except KeyError:
-                                # Set icon to default
-                                icon = self.default_icon
+                    # Plot all individual packets in entry
+                    for packet in entry:
+                        plot_marker(marker_type='individual', data=packet)
 
-                            folium.Marker(coords, popup=folium.Popup(iframe, max_width=250), tooltip=tooltip_text,
-                                          icon=folium.Icon(color=layers[packet['type'][0]][1], icon=icon, prefix='fa')
-                                          ).add_to(stationID_layers[f'{packet['type'][0]}_{packet['stationID'][0]}'])
+                else:
+                    def group_packets():
+                        def process_packet():
+                            stID, pkt_type = packet.get('stationID')[0], packet.get('type')[0]
+                            if pkt_type not in packets_grouped:
+                                packets_grouped[pkt_type] = {}
+                                process_packet()
+                            elif stID not in packets_grouped[pkt_type]:
+                                packets_grouped[pkt_type][stID] = [idx]
+                            else:
+                                packets_grouped[pkt_type][stID].append(idx)
+
+                        # group packets by stationID and type values
+                        packets_grouped = {}
+                        for idx, packet in enumerate(entry):
+                            process_packet()
+                        return packets_grouped
+
+                    # Group packets in entry based on their stationID and type values
+                    grouped = group_packets()
+
+                    for Tkey, Tvalue in grouped.items():
+                        for IDkey, IDvalue in Tvalue.items():
+                            if len(IDvalue) == 1:
+                                plot_marker(marker_type='individual', data=entry[IDvalue[0]])
+                            else:
+                                grouped_packets = [entry[idx] for idx in IDvalue]
+                                plot_marker(marker_type='merged', data=grouped_packets, pkt_type=Tkey, station_id=IDkey)
 
             folium.LayerControl(collapsed=False).add_to(self.map)
 
             # Add GroupedLayerControl
             for packet_type in self.packet_types:
-                color = layers[packet_type][1]
-                name = f'<span style="color: {color};">{packet_type}</span>_stationID:'
-                layer_list = [layer for key, layer in stationID_layers.items() if key.startswith(packet_type)]
+                color = self.layers[packet_type]['color']
+                name = f'<span style="color: {color};">{packet_type}</span> stationID:'
+                layer_list = [layer for key, layer in self.layers[packet_type]['subgroups'].items()]
                 GroupedLayerControl(
                     groups={name: layer_list},
                     collapsed=False,
                     exclusive_groups=False
                 ).add_to(self.map)
+
+        create_map()
+        create_layers()
+        plot_data()
