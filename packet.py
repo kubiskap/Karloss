@@ -318,7 +318,7 @@ class Packet(object):
                 return 'OK'
 
         if self.state == 'Not analysed':
-            if isinstance(self.data, dict):
+            if isinstance(self.data[self.type], dict):
 
                 # Main loop over all parameters (using recursive_parameters generator)
                 for path, key, value in recursive_parameters(self.data):
@@ -381,13 +381,13 @@ class Packet(object):
                     self.analysed['.'.join(path)] = analysed_value
 
             # There was a problem during decoding, in this case the data value type will be a string
-            elif isinstance(self.data, str):
+            elif isinstance(self.data[self.type], str):
                 # Set state to Error
                 self.state = 'Error'
 
                 # Split the string into several substrings, so that we can provide accurate output
                 regex = r'^(.*?)\((.*?)\)'
-                matches = re.search(regex, self.data)
+                matches = re.search(regex, self.data[self.type])
 
                 error_type = matches.group(1)
                 error_message = matches.group(2).split(': ', 1)

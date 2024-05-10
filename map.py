@@ -53,10 +53,12 @@ class Map(object):
 
             innerBreak = False
             # For each parameter configured, find the value under this path
+            innerBreak = False
             for key, path in pkt_config.items():
 
                 # If there is path value configured
                 if path is not None:
+
                     # Get value of parameter under this path in current packet
                     value = packet.values.get(path, (None, None))
 
