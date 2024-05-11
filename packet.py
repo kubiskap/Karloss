@@ -3,7 +3,7 @@ import jsonpath_ng
 
 
 class Packet(object):
-    def __init__(self, msg_type, content, ignored_types, state='Not analysed', arrival_time=None, asn=None):
+    def __init__(self, msg_type, content, state='Not analysed', arrival_time=None, asn=None):
         def process_packet(input_dict):
             """
             Internal method to convert the raw decoded packet into a true dictionary.
@@ -54,16 +54,14 @@ class Packet(object):
         self.type = msg_type
         self.state = state
 
-        if content is not None:
-            self.data = process_packet(content) if isinstance(content, dict) else content
+        self.data = process_packet(content) if isinstance(content, dict) else content
 
         # Initiate attributes used for packet analysis results
-        if self.type not in ignored_types:
-            self.asn = asn
-            self.analysed = {}
-            self.values = {}
-            self.summary = {}
-            self.problems = {}
+        self.asn = asn
+        self.analysed = {}
+        self.values = {}
+        self.summary = {}
+        self.problems = {}
 
     def analyse_packet(self):
         def recursive_parameters(packet: dict, path=None):
@@ -126,97 +124,116 @@ class Packet(object):
                         """
                         Checks restrictions (restricted values) and named numbers.
                         """
+                        if not isinstance(value, int):
+                            problems.append(Problem(1, f'Value is not of expected data type.'))
+                        else:
 
-                        if 'restricted-to' in asn.keys():
-                            in_range = []
-                            for restriction in asn['restricted-to']:
-                                if restriction is not None:
-                                    in_range.append(value in range(restriction[0], restriction[1] + 1))
-                            if not all(in_range):
-                                problems.append(Problem(1, f'Value is out of range ({asn['restricted-to']}).'))
-                        if 'named-numbers' in asn.keys():
+                            if 'restricted-to' in asn.keys():
+                                in_range = []
+                                for restriction in asn['restricted-to']:
+                                    if restriction is not None:
+                                        in_range.append(value in range(restriction[0], restriction[1] + 1))
+                                if not all(in_range):
+                                    problems.append(Problem(1, f'Value is out of range ({asn['restricted-to']}).'))
+                            if 'named-numbers' in asn.keys():
 
-                            # Try to determine if named-numbers try to provide only the unit of value, in which case
-                            # the program will not add a warning if value is not in named-numbers
-                            # This should cover most cases, but not all
-                            numbers = ('one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-                                       'twenty', 'thirty', 'fourty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety',
-                                       'hundred')
-                            named_num_is_unit = []
-                            for named_num in asn['named-numbers'].keys():
-                                named_num_is_unit.append(named_num.startswith(numbers))
+                                # Try to determine if named-numbers try to provide only the unit of value, in which case
+                                # the program will not add a warning if value is not in named-numbers
+                                # This should cover most cases, but not all
+                                numbers = ('one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+                                           'twenty', 'thirty', 'fourty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety',
+                                           'hundred')
+                                named_num_is_unit = []
+                                for named_num in asn['named-numbers'].keys():
+                                    named_num_is_unit.append(named_num.startswith(numbers))
 
-                            if value in asn['named-numbers'].values():
-                                extended_value[1] = list(asn['named-numbers'].keys())[
-                                                    list(asn['named-numbers'].values()).index(value)]
+                                if value in asn['named-numbers'].values():
+                                    extended_value[1] = list(asn['named-numbers'].keys())[
+                                                        list(asn['named-numbers'].values()).index(value)]
 
-                                if value == asn['named-numbers'].get('unavailable'):
-                                    problems.append(Problem(0, 'Value is unavailable (named-numbers).'))
-                                elif value == asn['named-numbers'].get('outOfRange'):
-                                    problems.append(Problem(1, 'Value is out of range (named-numbers).'))
+                                    if value == asn['named-numbers'].get('unavailable'):
+                                        problems.append(Problem(0, 'Value is unavailable (named-numbers).'))
+                                    elif value == asn['named-numbers'].get('outOfRange'):
+                                        problems.append(Problem(1, 'Value is out of range (named-numbers).'))
 
-                            elif not any(named_num_is_unit):
-                                problems.append(Problem(0, 'Value not in named-numbers.'))
+                                elif not any(named_num_is_unit):
+                                    problems.append(Problem(0, 'Value not in named-numbers.'))
 
                     case 'ENUMERATED':
                         """
                         Checks whether or not the value is in defined values or is 'unavailable' or 'outOfRange'.
                         """
-                        if 'values' in asn.keys():
-                            value_list = []
-                            for i in asn['values']:
-                                if isinstance(i, tuple):
-                                    value_list.append(i[0])
-                                else:
-                                    value_list.append(i)
-                            if value not in value_list:
-                                problems.append(Problem(1, 'Enumerate value not in defined values.'))
-                            elif value == 'unavailable':
-                                problems.append(Problem(0, 'Enumerate value set to unavailable.'))
-                            elif value == 'outOfRange':
-                                problems.append(Problem(0, 'Enumerate value set to out of range.'))
+                        if not isinstance(value, str):
+                            problems.append(Problem(1, f'Value is not of expected data type.'))
+                        else:
 
-                    case 'IA5String' | 'NumericString' | 'SEQUENCE OF':
+                            if 'values' in asn.keys():
+                                value_list = []
+                                for i in asn['values']:
+                                    if isinstance(i, tuple):
+                                        value_list.append(i[0])
+                                    else:
+                                        value_list.append(i)
+                                if value not in value_list:
+                                    problems.append(Problem(1, 'Enumerate value not in defined values.'))
+                                elif value == 'unavailable':
+                                    problems.append(Problem(0, 'Enumerate value set to unavailable.'))
+                                elif value == 'outOfRange':
+                                    problems.append(Problem(0, 'Enumerate value set to out of range.'))
+
+                    case 'IA5String' | 'NumericString':
                         """
                         Checks if value is in permitted sizes.
                         """
-                        if 'size' in asn.keys():
-                            size_allowed = []
-                            for size in asn['size']:
-                                if not None:
-                                    size_allowed.append(len(value) in range(size[0], size[1] + 1))
-                                else:
-                                    size_allowed.append(value is None)
-                            if not all(size_allowed):
-                                problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
+                        if not isinstance(value, str):
+                            problems.append(Problem(1, f'Value is not of expected data type.'))
+                        else:
+
+                            if 'size' in asn.keys():
+                                size_allowed = []
+                                for size in asn['size']:
+                                    if not None:
+                                        size_allowed.append(len(value) in range(size[0], size[1] + 1))
+                                    else:
+                                        size_allowed.append(value is None)
+                                if not all(size_allowed):
+                                    problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
 
                     case 'BIT STRING':
                         """
                         Checks if the number of bits is the same as size, pairs activated bits to their meanings.
                         """
-                        if 'size' in asn.keys():
-                            if len(value) != asn['size'][0]:
-                                problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
-                        if 'named-bits' in asn.keys():
-                            bits_activated = []
-                            for index, bit in enumerate(list(value)):
-                                if bit == '1':
-                                    bits_activated.append(asn['named-bits'][index][0])
-                            extended_value[1] = bits_activated
+                        if not isinstance(value, str):
+                            problems.append(Problem(1, f'Value is not of expected data type.'))
+                        else:
+
+                            if 'size' in asn.keys():
+                                if len(value) != asn['size'][0]:
+                                    problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
+                            if 'named-bits' in asn.keys():
+                                bits_activated = []
+                                for index, bit in enumerate(list(value)):
+                                    if bit == '1':
+                                        bits_activated.append(asn['named-bits'][index][0])
+                                extended_value[1] = bits_activated
 
                     case 'SEQUENCE OF':
                         """
                         Checks if number of values is in permitted size.
                         """
-                        if 'size' in asn.keys():
-                            size_allowed = []
-                            for size in asn['size']:
-                                if not None:
-                                    size_allowed.append(len(value.keys()) in range(size[0], size[1] + 1))
-                                else:
-                                    size_allowed.append(value is None)
-                            if not all(size_allowed):
-                                problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
+                        if not isinstance(value, list):
+                            problems.append(Problem(1, f'Value is not of expected data type.'))
+                        else:
+
+                            if 'size' in asn.keys():
+                                size_allowed = []
+                                for size in asn['size']:
+                                    if not None:
+                                        size_allowed.append(len(value.keys()) in range(size[0], size[1] + 1))
+                                    else:
+                                        size_allowed.append(value is None)
+                                if not all(size_allowed):
+                                    problems.append(Problem(1, f'Out of specified size ({asn['size']}).'))
 
             elif 'member-type_type' in asn.keys():
                 """
@@ -232,21 +249,29 @@ class Packet(object):
                         Checks if all mandatory parameters are present (if not, error).
                         Checks if all optional parameters are present (if not, warning).
                         """
-                        for member, memAsnValue in asn.items():
-                            if isinstance(memAsnValue, dict) and member not in value.keys() and memAsnValue.get(
-                                    'optional') is not True:
-                                problems.append(Problem(1, f'Mandatory parameter {member} missing from Sequence.'))
-                            elif isinstance(memAsnValue, dict) and member not in value.keys() and memAsnValue.get(
-                                    'optional') is True:
-                                problems.append(Problem(0, f'Optional parameter {member} missing from Sequence.'))
+                        if not isinstance(value, dict):
+                            problems.append(Problem(1, f'Value is not of expected data type.'))
+                        else:
+
+                            for member, memAsnValue in asn.items():
+                                if isinstance(memAsnValue, dict) and member not in value.keys() and memAsnValue.get(
+                                        'optional') is not True:
+                                    problems.append(Problem(1, f'Mandatory parameter {member} missing from Sequence.'))
+                                elif isinstance(memAsnValue, dict) and member not in value.keys() and memAsnValue.get(
+                                        'optional') is True:
+                                    problems.append(Problem(0, f'Optional parameter {member} missing from Sequence.'))
 
                     case 'CHOICE':
                         """
                         Checks if only one of parameters specified in definition is present.
                         """
-                        if list(value.keys())[0] not in asn.keys():
-                            problems.append(Problem(1, f'Mandatory parameter {list(value.keys())[0]} missing from '
-                                                       f'Choice.'))
+                        if not isinstance(value, dict):
+                            problems.append(Problem(1, f'Value is not of expected data type.'))
+                        else:
+
+                            if list(value.keys())[0] not in asn.keys():
+                                problems.append(Problem(1, f'Mandatory parameter {list(value.keys())[0]} missing from '
+                                                           f'Choice.'))
 
         def add_to_statistics(summary_state: str):
             """
