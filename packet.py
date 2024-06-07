@@ -419,7 +419,7 @@ class Packet(object):
                     # Update packet state accordingly
                     if current_parameter.state == 'Error':
                         self.state = 'Error'
-                    elif current_parameter.state == 'Warning' and self.state == 'Error':
+                    elif current_parameter.state == 'Warning' and self.state != 'Error':
                         self.state = 'Warning'
                     elif current_parameter.state == 'OK' and self.state not in ['Error', 'Warning']:
                         self.state = 'OK'
