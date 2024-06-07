@@ -390,17 +390,31 @@ class Packet(object):
                     # Create class object for this parameter
                     current_parameter = Parameter(value=value, path=path, packet_asn=self.asn)
 
-                    # Establish whitelist and blacklist conditions for analysing the parameter -- only if one of these
-                    # is true, the parameter will be analysed, otherwise it will be skipped
-                    wl_cond = filter_mode.lower() == 'whitelist' and current_parameter.asn_path in filter_parameters
-                    bl_cond = filter_mode.lower() == 'blacklist' and current_parameter.asn_path not in filter_parameters
+                    # Establish filter condition
+                    if filter_mode is None or not filter_parameters:
+                        # If the filter mode is not specified or parameters to filter by are not specified,
+                        # always proceed with the analysis of any parameter
+                        filter_cond = True
+                    else:
+                        # Establish whitelist and blacklist conditions for analysing the parameter -- only if one of these
+                        # is true, the parameter will be analysed, otherwise it will be skipped
+                        wl_cond = filter_mode.lower() == 'whitelist' and '.'.join(current_parameter.asn_path) in filter_parameters
+                        bl_cond = filter_mode.lower() == 'blacklist' and '.'.join(current_parameter.asn_path) not in filter_parameters
+                        filter_cond = wl_cond or bl_cond
 
+                    if filter_cond:
+                        # Analyse the parameter
+                        current_parameter.analyse_parameter()
 
-                    # Analyse the parameter
-                    current_parameter.analyse_parameter()
+                        # Add to summary and problems
+                        add_to_statistics(current_parameter.state)
 
-                    # Add to summary and problems
-                    add_to_statistics(current_parameter.state)
+                        # Construct value to be assigned to parameter in analysed
+                        analysed_value = (current_parameter.state, None if not current_parameter.problems else
+                        [problem.desc for problem in current_parameter.problems])
+
+                        # Add value to analysed
+                        self.analysed[current_parameter.name] = analysed_value
 
                     # Update packet state accordingly
                     if current_parameter.state == 'Error':
@@ -410,16 +424,9 @@ class Packet(object):
                     elif current_parameter.state == 'OK' and self.state not in ['Error', 'Warning']:
                         self.state = 'OK'
 
-
                     # Add extended value into values
                     self.values[current_parameter.name] = [current_parameter.value, current_parameter.named_value]
 
-                    # Construct value to be assigned to parameter in analysed
-                    analysed_value = (current_parameter.state, None if not current_parameter.problems else
-                                      [problem.desc for problem in current_parameter.problems])
-
-                    # Add value to analysed
-                    self.analysed[current_parameter.name] = analysed_value
 
             # There was a problem during decoding, in this case the data value type will be a string
             elif isinstance(self.data[self.type], str):
