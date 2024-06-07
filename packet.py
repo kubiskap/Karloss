@@ -57,9 +57,6 @@ class Packet(object):
 
         self.data = process_packet(content) if isinstance(content, dict) else content
 
-        # Initiate attribute of parameters
-        self.parameters = []
-
         # Initiate attributes of output
         self.values = {}
         self.summary = {}
@@ -196,7 +193,7 @@ class Packet(object):
 
                 self.named_value = None
                 self.problems = []
-                self.asn_path, self.path_converted = convert_item_path(path)
+                self.path_converted, self.asn_path = convert_item_path(path)
 
                 self.asn = get_parameter_asn()
 
@@ -314,7 +311,7 @@ class Packet(object):
                                 """
                                 Checks if number of values is in permitted size.
                                 """
-                                if not isinstance(self.value, list):
+                                if not isinstance(self.value, dict):
                                     self.problems.append(self.Problem('Error', f'Value is not of expected data type.'))
                                 else:
 
@@ -398,8 +395,8 @@ class Packet(object):
                     else:
                         # Establish whitelist and blacklist conditions for analysing the parameter -- only if one of these
                         # is true, the parameter will be analysed, otherwise it will be skipped
-                        wl_cond = filter_mode.lower() == 'whitelist' and '.'.join(current_parameter.asn_path) in filter_parameters
-                        bl_cond = filter_mode.lower() == 'blacklist' and '.'.join(current_parameter.asn_path) not in filter_parameters
+                        wl_cond = filter_mode.lower() == 'whitelist' and '.'.join(current_parameter.path_converted) in filter_parameters
+                        bl_cond = filter_mode.lower() == 'blacklist' and '.'.join(current_parameter.path_converted) not in filter_parameters
                         filter_cond = wl_cond or bl_cond
 
                     if filter_cond:
