@@ -302,7 +302,7 @@ class Packet(object):
 
                                     if 'size' in self.asn.keys():
                                         if len(self.value) != self.asn['size'][0]:
-                                            self.problems.append(self.Problem('Error', f'Out of specified size ({asn['size']}).'))
+                                            self.problems.append(self.Problem('Error', f'Out of specified size ({self.asn['size']}).'))
                                     if 'named-bits' in self.asn.keys():
                                         bits_activated = []
                                         for index, bit in enumerate(list(self.value)):
@@ -326,7 +326,7 @@ class Packet(object):
                                             else:
                                                 size_allowed.append(self.value is None)
                                         if not all(size_allowed):
-                                            self.problems.append(self.Problem('Error', f'Out of specified size ({asn['size']}).'))
+                                            self.problems.append(self.Problem('Error', f'Out of specified size ({self.asn['size']}).'))
 
                     elif 'member-type_type' in self.asn.keys():
                         """
@@ -365,7 +365,7 @@ class Packet(object):
                                     self.problems.append(self.Problem('Error', f'Value is not of expected data type.'))
                                 else:
 
-                                    if list(self.value.keys())[0] not in asn.keys():
+                                    if list(self.value.keys())[0] not in self.asn.keys():
                                         self.problems.append(
                                             self.Problem('Error', f'Mandatory parameter {list(self.value.keys())[0]} missing from '
                                                        f'Choice.'))
@@ -387,7 +387,7 @@ class Packet(object):
                 # Main loop over all parameters (using recursive_parameters generator)
                 for path, key, value in recursive_parameters(self.data):
 
-                    # Create class object for this parameter and append it to the list
+                    # Create class object for this parameter
                     current_parameter = Parameter(value=value, path=path, packet_asn=self.asn)
 
                     # Analyse the parameter
@@ -395,6 +395,8 @@ class Packet(object):
 
                     # Add to summary and problems
                     add_to_statistics(current_parameter.state)
+
+                    # Update
 
                     # Add extended value into values
                     self.values[current_parameter.name] = [current_parameter.value, current_parameter.named_value]
