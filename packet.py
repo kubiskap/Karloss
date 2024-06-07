@@ -165,7 +165,7 @@ class Packet(object):
 
                 def __init__(self, kind, desc):
                     self.kind = kind
-                    self.description = desc
+                    self.desc = desc
 
             def __init__(self, value, path, packet_asn, state='Not analysed'):
                 def get_parameter_asn():
@@ -239,7 +239,7 @@ class Packet(object):
                                             named_num_is_unit.append(named_num.startswith(numbers))
 
                                         if self.value in self.asn['named-numbers'].values():
-                                            self.named_value = list(asn['named-numbers'].keys())[
+                                            self.named_value = list(self.asn['named-numbers'].keys())[
                                                 list(self.asn['named-numbers'].values()).index(value)]
 
                                             if self.value == self.asn['named-numbers'].get('unavailable'):
