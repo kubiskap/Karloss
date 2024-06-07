@@ -400,7 +400,8 @@ class Packet(object):
                     self.values[current_parameter.name] = [current_parameter.value, current_parameter.named_value]
 
                     # Construct value to be assigned to parameter in analysed
-                    analysed_value = (current_parameter.state, None if not current_parameter.problems else problem_descs)
+                    analysed_value = (current_parameter.state, None if not current_parameter.problems else
+                                      [problem.desc for problem in current_parameter.problems])
 
                     # Add value to analysed
                     self.analysed[current_parameter.name] = analysed_value
