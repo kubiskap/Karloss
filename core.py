@@ -168,12 +168,16 @@ class PacketAnalyser(object):
             # Explicitly close the capture to release resources and terminate event loop
             pcap.close()
 
-    def analyse(self, reset_cache=True, filter_mode=None, filter_parameters=[]):
+    def analyse(self, reset_cache=True, filter_mode='Undefined', filter_parameters=[]):
 
         # Catch filter mode not being 'whitelist'/'blacklist' and filter_parameters not being list
-        if (filter_mode is not None or isinstance(filter_mode, str)) or filter_mode.lower() not in ['whitelist', 'blacklist']:
+        if not isinstance(filter_mode, str):
             raise ValueError('"filter_mode" parameter must have values: "blacklist", "whitelist"')
-        if not isinstance(filter_parameters, list) or any([isinstance(element, str) for element in filter_parameters]):
+        elif filter_mode != 'Undefined' and filter_mode not in ['blacklist', 'whitelist']:
+            raise ValueError('"filter_mode" parameter must have values: "blacklist", "whitelist"')
+        if not isinstance(filter_parameters, list):
+            raise ValueError('"filter_parameters" parameter must be of type List with elements of type String')
+        elif not all([isinstance(element, str) for element in filter_parameters]):
             raise ValueError('"filter_parameters" parameter must be of type List with elements of type String')
 
         # Create analysed cache dir
