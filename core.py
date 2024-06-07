@@ -168,7 +168,7 @@ class PacketAnalyser(object):
             # Explicitly close the capture to release resources and terminate event loop
             pcap.close()
 
-    def analyse(self, reset_cache=True):
+    def analyse(self, reset_cache=True, filter_mode=None, filter_parameters=[]):
 
         # Create analysed cache dir
         analysed_cache_dir = self.__cache_dir('analysed_cache')
@@ -220,7 +220,7 @@ class PacketAnalyser(object):
                         time_packet_start = datetime.datetime.now()
 
                         # Analyse packet
-                        pkt.analyse_packet()
+                        pkt.analyse_packet(filter_mode=filter_mode, filter_parameters=filter_parameters)
 
                         time_packet_end = datetime.datetime.now()
 
