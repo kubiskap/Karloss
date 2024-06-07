@@ -109,7 +109,7 @@ class PacketAnalyser(object):
                 msg_object = self.configured_msgs.get(pkt.btpb.dstport)
 
                 if msg_object is None:
-                    return Packet(msg_type='Unknown C-ITS', ignored_types=self.__ignored_packet_types,
+                    return Packet(msg_type='Unknown C-ITS',
                                   content=None, arrival_time=pkt.sniff_time)
                 else:
                     content = msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value))
@@ -117,10 +117,10 @@ class PacketAnalyser(object):
                     # Wrap the entire message into one big container
                     content = {msg_object.msg_name: content}
 
-                    return Packet(msg_type=msg_object.msg_name, ignored_types=self.__ignored_packet_types,
+                    return Packet(msg_type=msg_object.msg_name,
                                   content=content, arrival_time=pkt.sniff_time, asn=msg_object.asn_rebuilt)
             else:
-                return Packet(msg_type='Non-C-ITS', ignored_types=self.__ignored_packet_types,
+                return Packet(msg_type='Non-C-ITS',
                               content=None, arrival_time=pkt.sniff_time)
 
         # Add input_file to method attributes
