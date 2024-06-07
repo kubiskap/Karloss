@@ -170,6 +170,12 @@ class PacketAnalyser(object):
 
     def analyse(self, reset_cache=True, filter_mode=None, filter_parameters=[]):
 
+        # Catch filter mode not being 'whitelist'/'blacklist' and filter_parameters not being list
+        if (filter_mode is not None or isinstance(filter_mode, str)) or filter_mode.lower() not in ['whitelist', 'blacklist']:
+            raise ValueError('"filter_mode" parameter must have values: "blacklist", "whitelist"')
+        if not isinstance(filter_parameters, list) or any([isinstance(element, str) for element in filter_parameters]):
+            raise ValueError('"filter_parameters" parameter must be of type List with elements of type String')
+
         # Create analysed cache dir
         analysed_cache_dir = self.__cache_dir('analysed_cache')
 
