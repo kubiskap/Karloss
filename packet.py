@@ -390,13 +390,26 @@ class Packet(object):
                     # Create class object for this parameter
                     current_parameter = Parameter(value=value, path=path, packet_asn=self.asn)
 
+                    # Establish whitelist and blacklist conditions for analysing the parameter -- only if one of these
+                    # is true, the parameter will be analysed, otherwise it will be skipped
+                    wl_cond = filter_mode.lower() == 'whitelist' and current_parameter.asn_path in filter_parameters
+                    bl_cond = filter_mode.lower() == 'blacklist' and current_parameter.asn_path not in filter_parameters
+
+
                     # Analyse the parameter
                     current_parameter.analyse_parameter()
 
                     # Add to summary and problems
                     add_to_statistics(current_parameter.state)
 
-                    # Update
+                    # Update packet state accordingly
+                    if current_parameter.state == 'Error':
+                        self.state = 'Error'
+                    elif current_parameter.state == 'Warning' and self.state == 'Error':
+                        self.state = 'Warning'
+                    elif current_parameter.state == 'OK' and self.state not in ['Error', 'Warning']:
+                        self.state = 'OK'
+
 
                     # Add extended value into values
                     self.values[current_parameter.name] = [current_parameter.value, current_parameter.named_value]
