@@ -154,6 +154,11 @@ class Packet(object):
                                                          problem.kind == 'Error']
 
         class Parameter(object):
+            """
+            Object used to store individual parameters of the packets and information about them.
+
+            We can analyse or evaluate the Parameter.
+            """
             def __init__(self, value, path, packet_asn, state='Not analysed'):
 
                 self.name = '.'.join(path)
@@ -417,13 +422,16 @@ class Packet(object):
                         # Add value to analysed
                         self.analysed[current_parameter.name] = analysed_value
 
-                    # Update packet state accordingly
-                    if current_parameter.state == 'Error':
-                        self.state = 'Error'
-                    elif current_parameter.state == 'Warning' and self.state != 'Error':
-                        self.state = 'Warning'
-                    elif current_parameter.state == 'OK' and self.state not in ['Error', 'Warning']:
-                        self.state = 'OK'
+                    # Define state priorities
+                    state_priority = {
+                        'Error': 3,
+                        'Warning': 2,
+                        'OK': 1
+                    }
+
+                    # Update the state based on priority
+                    if state_priority[current_parameter.state] > state_priority.get(self.state, 0):
+                        self.state = current_parameter.state
 
                     # Add extended value into values
                     self.values[current_parameter.name] = [current_parameter.value, current_parameter.named_value]
