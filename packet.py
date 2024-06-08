@@ -154,6 +154,19 @@ class Packet(object):
                                                          problem.kind == 'Error']
 
         class Parameter(object):
+            def __init__(self, value, path, packet_asn, state='Not analysed'):
+
+                self.name = '.'.join(path)
+                self.value = value
+                self.state = state
+                self.path = path
+                self.packet_asn = packet_asn
+
+                self.named_value = None  # information about the value from the ASN definition
+                self.asn = None  # asn definition of the parameter, added in analyse_parameter()
+                self.problems = []  # list of problems of the parameter
+                self.path_converted, self.asn_path = convert_item_path(path)  # converted parameter paths
+
             class Problem(object):
                 """
                 A class to distinguish problems with parameters.
@@ -164,9 +177,9 @@ class Packet(object):
                     self.kind = kind
                     self.desc = desc
 
-            def __init__(self, value, path, packet_asn, state='Not analysed'):
+            def analyse_parameter(self):
                 def get_parameter_asn():
-                    asn_matches = jsonpath_ng.parse("$." + ".".join(self.asn_path)).find(packet_asn)
+                    asn_matches = jsonpath_ng.parse("$." + ".".join(self.asn_path)).find(self.packet_asn)
 
                     if not asn_matches:
                         # Parameter not found in ASN dictionary
@@ -186,18 +199,9 @@ class Packet(object):
 
                         return asn_definition
 
-                self.name = '.'.join(path)
-                self.value = value
-                self.state = state
-                self.path = path
-
-                self.named_value = None
-                self.problems = []
-                self.path_converted, self.asn_path = convert_item_path(path)
-
+                # Get the asn definition from the packet_asn dictionary
                 self.asn = get_parameter_asn()
 
-            def analyse_parameter(self):
                 # If there are none ASN related problems that were caught on init, analyse the parameter
                 if not self.problems:
                     if 'type' in self.asn.keys():
