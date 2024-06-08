@@ -207,7 +207,7 @@ class PacketAnalyser(object):
 
         # Catch parameter_expected_value not being a dictionary
         if not isinstance(parameter_expected_value, dict) or not all(
-                isinstance(key, str) for key in filter_parameters.keys()):
+                isinstance(key, str) for key in parameter_expected_value.keys()):
             raise ValueError('"parameter_expected_value" parameter must be a dictionary with keys of type string')
 
         # Create analysed cache dir
