@@ -430,7 +430,7 @@ class Packet(object):
                     }
 
                     # Update the state based on priority
-                    if state_priority[current_parameter.state] > state_priority.get(self.state, 0):
+                    if state_priority.get(current_parameter.state, 0) > state_priority.get(self.state, 0):
                         self.state = current_parameter.state
 
                     # Add extended value into values
