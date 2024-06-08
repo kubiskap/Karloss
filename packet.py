@@ -446,12 +446,12 @@ class Packet(object):
                         # Add to summary and problems
                         add_to_statistics(current_parameter.state)
 
-                        # Construct value to be assigned to parameter in analysed
-                        analysed_value = (current_parameter.state, None if not current_parameter.problems else
-                        [problem.desc for problem in current_parameter.problems])
+                    # Construct value to be assigned to parameter in analysed
+                    analysed_value = (current_parameter.state, None if not current_parameter.problems else
+                    [problem.desc for problem in current_parameter.problems])
 
-                        # Add value to analysed
-                        self.analysed[current_parameter.name] = analysed_value
+                    # Add value to analysed
+                    self.analysed[current_parameter.name] = analysed_value
 
                     # Define state priorities
                     state_priority = {
