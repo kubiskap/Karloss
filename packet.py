@@ -63,7 +63,7 @@ class Packet(object):
         self.problems = {}
         self.analysed = {}
 
-    def analyse_packet(self, filter_mode, filter_parameters):
+    def analyse_packet(self, parameter_expected_value, filter_mode, filter_parameters):
         def recursive_parameters(packet: dict, path=None):
             """
             Generator used to iterate through every parameter of the packet in "analyse_packet" function.
@@ -159,13 +159,14 @@ class Packet(object):
 
             We can analyse or evaluate the Parameter.
             """
-            def __init__(self, value, path, packet_asn, state='Not analysed'):
+            def __init__(self, value, path, packet_asn, value_expected=None, state='Not analysed'):
 
                 self.name = '.'.join(path)
                 self.value = value
                 self.state = state
                 self.path = path
                 self.packet_asn = packet_asn
+                self.value_expected = value_expected
 
                 self.named_value = None  # information about the value from the ASN definition
                 self.asn = None  # asn definition of the parameter, added in analyse_parameter()
