@@ -205,6 +205,10 @@ class PacketAnalyser(object):
                 isinstance(element, str) for element in filter_parameters):
             raise ValueError('"filter_parameters" parameter must be a list with elements of type string')
 
+        # Catch parameter_expected_value not being a dictionary
+        if not isinstance(parameter_expected_value, dict) or not all(isinstance(key, str) for key in filter_parameters.keys()):
+            raise ValueError('"parameter_expected_value" parameter must be a dictionary with keys of type string')
+
         # Create analysed cache dir
         analysed_cache_dir = self.__cache_dir('analysed_cache')
 
