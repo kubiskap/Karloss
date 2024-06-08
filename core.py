@@ -169,6 +169,7 @@ class PacketAnalyser(object):
             pcap.close()
 
     def analyse(self, reset_cache=True,
+                parameter_expected_value={},
                 packet_filter_mode='Undefined',
                 filter_packets=[],
                 parameter_filter_mode='Undefined',
@@ -186,6 +187,7 @@ class PacketAnalyser(object):
         if not isinstance(filter_packets, list) or not all(isinstance(element, str) for element in filter_packets):
             raise ValueError('"filter_packets" parameter must be a list with elements of type string')
 
+        # Handle packet type filtering
         if packet_filter_mode.lower() == 'blacklist':
             self.__ignored_packet_types.extend(
                 packet_type for packet_type in filter_packets if packet_type in self.packet_types)
@@ -202,6 +204,11 @@ class PacketAnalyser(object):
         if not isinstance(filter_parameters, list) or not all(
                 isinstance(element, str) for element in filter_parameters):
             raise ValueError('"filter_parameters" parameter must be a list with elements of type string')
+
+        # Catch parameter_expected_value not being a dictionary
+        if not isinstance(parameter_expected_value, dict) or not all(
+                isinstance(key, str) for key in parameter_expected_value.keys()):
+            raise ValueError('"parameter_expected_value" parameter must be a dictionary with keys of type string')
 
         # Create analysed cache dir
         analysed_cache_dir = self.__cache_dir('analysed_cache')
@@ -253,7 +260,8 @@ class PacketAnalyser(object):
                         time_packet_start = datetime.datetime.now()
 
                         # Analyse packet
-                        pkt.analyse_packet(filter_mode=parameter_filter_mode, filter_parameters=filter_parameters)
+                        pkt.analyse_packet(parameter_expected_value=parameter_expected_value,
+                                           filter_mode=parameter_filter_mode, filter_parameters=filter_parameters)
 
                         time_packet_end = datetime.datetime.now()
 
@@ -299,6 +307,7 @@ class PacketAnalyser(object):
         """
         Method used to summarize packet types present in the file.
         """
+
         def pkt_types_algorithm():
             if packet.type in self.packet_types:
 

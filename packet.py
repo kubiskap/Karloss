@@ -63,7 +63,7 @@ class Packet(object):
         self.problems = {}
         self.analysed = {}
 
-    def analyse_packet(self, filter_mode, filter_parameters):
+    def analyse_packet(self, parameter_expected_value, filter_mode, filter_parameters):
         def recursive_parameters(packet: dict, path=None):
             """
             Generator used to iterate through every parameter of the packet in "analyse_packet" function.
@@ -159,18 +159,21 @@ class Packet(object):
 
             We can analyse or evaluate the Parameter.
             """
-            def __init__(self, value, path, packet_asn, state='Not analysed'):
+            def __init__(self, value, path, packet_asn, path_converted, asn_path,
+                         value_expected=None, state='Not analysed'):
 
                 self.name = '.'.join(path)
                 self.value = value
                 self.state = state
                 self.path = path
                 self.packet_asn = packet_asn
+                self.value_expected = value_expected # expected value specified in analyse method
+                self.path_converted = path_converted
+                self.asn_path = asn_path
 
                 self.named_value = None  # information about the value from the ASN definition
                 self.asn = None  # asn definition of the parameter, added in analyse_parameter()
                 self.problems = []  # list of problems of the parameter
-                self.path_converted, self.asn_path = convert_item_path(path)  # converted parameter paths
 
             class Problem(object):
                 """
@@ -209,6 +212,21 @@ class Packet(object):
 
                 # If there are none ASN related problems that were caught on init, analyse the parameter
                 if not self.problems:
+
+                    # If there is an expected value specified for this parameter, evaluate it
+                    if self.value_expected is not None:
+                        # value_expected can either be list of multiple expected values or the expected value itself
+                        if isinstance(self.value_expected, list):
+                            if self.value not in self.value_expected:
+                                self.problems.append(self.Problem('Error',
+                                                                  'Parameter value does not match '
+                                                                  'any of the expected values specified.'))
+                        else:
+                            if self.value != self.value_expected:
+                                self.problems.append(self.Problem('Error',
+                                                                  'Parameter value does not match '
+                                                                  'the expected value specified.'))
+
                     if 'type' in self.asn.keys():
                         """
                         'type' key is found in all data types except "SEQUENCE" and "CHOICE".
@@ -393,8 +411,21 @@ class Packet(object):
                 # Main loop over all parameters (using recursive_parameters generator)
                 for path, key, value in recursive_parameters(self.data):
 
-                    # Create class object for this parameter
-                    current_parameter = Parameter(value=value, path=path, packet_asn=self.asn)
+                    # Get path converted and asn_path
+                    path_converted, asn_path = convert_item_path(path)
+
+                    if '.'.join(path_converted) in parameter_expected_value:
+                        # Extract the expected value
+                        expected_value = parameter_expected_value['.'.join(path_converted)]
+
+                        # Create class object for this parameter with expected value
+                        current_parameter = Parameter(value=value, path=path, path_converted=path_converted,
+                                                      asn_path=asn_path, packet_asn=self.asn,
+                                                      value_expected=expected_value)
+                    else:
+                        # Create class object for this parameter
+                        current_parameter = Parameter(value=value, path=path, path_converted=path_converted,
+                                                      asn_path=asn_path, packet_asn=self.asn)
 
                     # Establish filter condition
                     if filter_mode is None or not filter_parameters:
@@ -415,12 +446,12 @@ class Packet(object):
                         # Add to summary and problems
                         add_to_statistics(current_parameter.state)
 
-                        # Construct value to be assigned to parameter in analysed
-                        analysed_value = (current_parameter.state, None if not current_parameter.problems else
-                        [problem.desc for problem in current_parameter.problems])
+                    # Construct value to be assigned to parameter in analysed
+                    analysed_value = (current_parameter.state, None if not current_parameter.problems else
+                    [problem.desc for problem in current_parameter.problems])
 
-                        # Add value to analysed
-                        self.analysed[current_parameter.name] = analysed_value
+                    # Add value to analysed
+                    self.analysed[current_parameter.name] = analysed_value
 
                     # Define state priorities
                     state_priority = {
