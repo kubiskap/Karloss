@@ -292,13 +292,14 @@ class PacketAnalyser(object):
             self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
                             set(ps) | set(s)}
 
-    def sum_pkt_types(self):
+    def sum_pkt_types(self, recursion=False):
         """
         Method used to summarize packet types present in the file.
         """
 
         # Clear previous content of packet_types attribute
-        self.packet_types = {}
+        if not recursion:
+            self.packet_types = {}
 
         # Create list of states of packets present in the file
         states = []
@@ -329,7 +330,7 @@ class PacketAnalyser(object):
 
             else:
                 self.packet_types[packet.type] = {state: {'num': 0, 'idx': []} for state in states}
-                self.sum_pkt_types()
+                self.sum_pkt_types(recursion=True)
 
     def output_results(self, output_location):
 
