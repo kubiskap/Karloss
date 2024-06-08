@@ -109,7 +109,7 @@ class PacketAnalyser(object):
                 msg_object = self.configured_msgs.get(pkt.btpb.dstport)
 
                 if msg_object is None:
-                    return Packet(msg_type='Unknown C-ITS', ignored_types=self.__ignored_packet_types,
+                    return Packet(msg_type='Unknown C-ITS',
                                   content=None, arrival_time=pkt.sniff_time)
                 else:
                     content = msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value))
@@ -117,10 +117,10 @@ class PacketAnalyser(object):
                     # Wrap the entire message into one big container
                     content = {msg_object.msg_name: content}
 
-                    return Packet(msg_type=msg_object.msg_name, ignored_types=self.__ignored_packet_types,
+                    return Packet(msg_type=msg_object.msg_name,
                                   content=content, arrival_time=pkt.sniff_time, asn=msg_object.asn_rebuilt)
             else:
-                return Packet(msg_type='Non-C-ITS', ignored_types=self.__ignored_packet_types,
+                return Packet(msg_type='Non-C-ITS',
                               content=None, arrival_time=pkt.sniff_time)
 
         # Add input_file to method attributes
@@ -168,7 +168,40 @@ class PacketAnalyser(object):
             # Explicitly close the capture to release resources and terminate event loop
             pcap.close()
 
-    def analyse(self, reset_cache=True):
+    def analyse(self, reset_cache=True,
+                packet_filter_mode='Undefined',
+                filter_packets=[],
+                parameter_filter_mode='Undefined',
+                filter_parameters=[]):
+
+        # Summarise packet types before the analysis
+        self.sum_pkt_types()
+
+        # Catch packet_filter_mode not being 'whitelist'/'blacklist' and filter_packets not being list
+        if not isinstance(packet_filter_mode, str) or (
+                packet_filter_mode.lower() not in ['blacklist', 'whitelist'] and packet_filter_mode != 'Undefined'):
+            raise ValueError(
+                '"packet_filter_mode" parameter must be a string with values: "blacklist", "whitelist", or "Undefined"')
+
+        if not isinstance(filter_packets, list) or not all(isinstance(element, str) for element in filter_packets):
+            raise ValueError('"filter_packets" parameter must be a list with elements of type string')
+
+        if packet_filter_mode.lower() == 'blacklist':
+            self.__ignored_packet_types.extend(
+                packet_type for packet_type in filter_packets if packet_type in self.packet_types)
+        elif packet_filter_mode.lower() == 'whitelist':
+            self.__ignored_packet_types.extend(
+                packet_type for packet_type in self.packet_types if packet_type not in filter_packets)
+
+        # Catch parameter_filter_mode not being 'whitelist'/'blacklist'/'Undefined' and filter_parameters not being a list of strings
+        if not isinstance(parameter_filter_mode, str) or (parameter_filter_mode.lower() not in ['blacklist',
+                                                                                                'whitelist'] and parameter_filter_mode != 'Undefined'):
+            raise ValueError(
+                '"parameter_filter_mode" parameter must be a string with values: "blacklist", "whitelist", or "Undefined"')
+
+        if not isinstance(filter_parameters, list) or not all(
+                isinstance(element, str) for element in filter_parameters):
+            raise ValueError('"filter_parameters" parameter must be a list with elements of type string')
 
         # Create analysed cache dir
         analysed_cache_dir = self.__cache_dir('analysed_cache')
@@ -220,7 +253,7 @@ class PacketAnalyser(object):
                         time_packet_start = datetime.datetime.now()
 
                         # Analyse packet
-                        pkt.analyse_packet()
+                        pkt.analyse_packet(filter_mode=parameter_filter_mode, filter_parameters=filter_parameters)
 
                         time_packet_end = datetime.datetime.now()
 
@@ -231,6 +264,9 @@ class PacketAnalyser(object):
                             f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
                             f'{(time_packet_end - time_packet_start).total_seconds():.1f} seconds.')
                     else:
+                        # Save packet into analysed cache to know its' analysis was skipped
+                        self.__cache_action(file, 'w', pkt)
+
                         self.log_message(f'Skipping {pkt.type} packet {idx + 1}/{len(self.packets)}.')
 
             # Update state
@@ -244,22 +280,29 @@ class PacketAnalyser(object):
         else:
             self.log_message('You need to import the packets first before analysis.')
 
-    def output_results(self, output_location):
+    def create_summary(self):
+        """
+        Method used to take individual packet summaries and sum them into the analysis summary.
+        """
+        # Clear previous content of summary attribute
+        self.summary = {}
 
-        if self.state == 'Analysis complete':
+        for packet in self.packets:
+            default_val = [0, 0, 0]
+            ps = packet.summary
+            s = self.summary
 
-            # Functions used to fill self.pkt_types and summary
-            def add_pkt_summary():
-                default_val = [0, 0, 0]
-                ps = packet.summary
-                s = self.summary
+            self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
+                            set(ps) | set(s)}
 
-                self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
-                                set(ps) | set(s)}
+    def sum_pkt_types(self):
+        """
+        Method used to summarize packet types present in the file.
+        """
+        def pkt_types_algorithm():
+            if packet.type in self.packet_types:
 
-            def add_pkt_types():
-                if packet.type in self.packet_types.keys():
-
+                if packet.state in self.packet_types[packet.type]:
                     self.packet_types[packet.type][packet.state]['num'] += 1
 
                     if packet.problems:
@@ -277,21 +320,27 @@ class PacketAnalyser(object):
 
                     self.packet_types[packet.type][packet.state]['idx'] = (
                             self.packet_types[packet.type][packet.state]['idx'] + [idx_val])
-
                 else:
-                    self.packet_types[packet.type] = {state: {'num': 0, 'idx': []} for state in states}
-                    add_pkt_types()
+                    self.packet_types[packet.type][packet.state] = {'num': 0, 'idx': []}
+                    pkt_types_algorithm()
 
-            # Create list of states of packets present in the file
-            states = []
-            for packet in self.packets:
-                if packet.state not in states:
-                    states.append(packet.state)
+            else:
+                self.packet_types[packet.type] = {}
+                pkt_types_algorithm()
 
-            # Generate statistics
-            for idx, packet in enumerate(self.packets):
-                add_pkt_summary()
-                add_pkt_types()
+        # Clear previous content of packet_types attribute:
+        self.packet_types = {}
+
+        for idx, packet in enumerate(self.packets):
+            pkt_types_algorithm()
+
+    def output_results(self, output_location):
+
+        if self.state == 'Analysis complete':
+
+            # Generate final statistics
+            self.create_summary()
+            self.sum_pkt_types()
 
             # Create folder in output_location based on session name (taken from log_file)
             output_path = os.path.join(output_location, os.path.splitext(os.path.basename(self.log_file))[0])
