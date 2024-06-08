@@ -168,17 +168,40 @@ class PacketAnalyser(object):
             # Explicitly close the capture to release resources and terminate event loop
             pcap.close()
 
-    def analyse(self, reset_cache=True, filter_mode='Undefined', filter_parameters=[]):
+    def analyse(self, reset_cache=True,
+                packet_filter_mode='Undefined',
+                filter_packets=[],
+                parameter_filter_mode='Undefined',
+                filter_parameters=[]):
 
-        # Catch filter mode not being 'whitelist'/'blacklist' and filter_parameters not being list
-        if not isinstance(filter_mode, str):
-            raise ValueError('"filter_mode" parameter must have values: "blacklist", "whitelist"')
-        elif filter_mode != 'Undefined' and filter_mode not in ['blacklist', 'whitelist']:
-            raise ValueError('"filter_mode" parameter must have values: "blacklist", "whitelist"')
-        if not isinstance(filter_parameters, list):
-            raise ValueError('"filter_parameters" parameter must be of type List with elements of type String')
-        elif not all([isinstance(element, str) for element in filter_parameters]):
-            raise ValueError('"filter_parameters" parameter must be of type List with elements of type String')
+        # Summarise packet types before the analysis
+        self.sum_pkt_types()
+
+        # Catch packet_filter_mode not being 'whitelist'/'blacklist' and filter_packets not being list
+        if not isinstance(packet_filter_mode, str) or (
+                packet_filter_mode.lower() not in ['blacklist', 'whitelist'] and packet_filter_mode != 'Undefined'):
+            raise ValueError(
+                '"packet_filter_mode" parameter must be a string with values: "blacklist", "whitelist", or "Undefined"')
+
+        if not isinstance(filter_packets, list) or not all(isinstance(element, str) for element in filter_packets):
+            raise ValueError('"filter_packets" parameter must be a list with elements of type string')
+
+        if packet_filter_mode.lower() == 'blacklist':
+            self.__ignored_packet_types.extend(
+                packet_type for packet_type in filter_packets if packet_type in self.packet_types)
+        elif packet_filter_mode.lower() == 'whitelist':
+            self.__ignored_packet_types.extend(
+                packet_type for packet_type in self.packet_types if packet_type not in filter_packets)
+
+        # Catch parameter_filter_mode not being 'whitelist'/'blacklist'/'Undefined' and filter_parameters not being a list of strings
+        if not isinstance(parameter_filter_mode, str) or (parameter_filter_mode.lower() not in ['blacklist',
+                                                                                                'whitelist'] and parameter_filter_mode != 'Undefined'):
+            raise ValueError(
+                '"parameter_filter_mode" parameter must be a string with values: "blacklist", "whitelist", or "Undefined"')
+
+        if not isinstance(filter_parameters, list) or not all(
+                isinstance(element, str) for element in filter_parameters):
+            raise ValueError('"filter_parameters" parameter must be a list with elements of type string')
 
         # Create analysed cache dir
         analysed_cache_dir = self.__cache_dir('analysed_cache')
@@ -230,7 +253,7 @@ class PacketAnalyser(object):
                         time_packet_start = datetime.datetime.now()
 
                         # Analyse packet
-                        pkt.analyse_packet(filter_mode=filter_mode, filter_parameters=filter_parameters)
+                        pkt.analyse_packet(filter_mode=parameter_filter_mode, filter_parameters=filter_parameters)
 
                         time_packet_end = datetime.datetime.now()
 
@@ -254,54 +277,67 @@ class PacketAnalyser(object):
         else:
             self.log_message('You need to import the packets first before analysis.')
 
+    def create_summary(self):
+        """
+        Method used to take individual packet summaries and sum them into the analysis summary.
+        """
+        # Clear previous content of summary attribute
+        self.summary = {}
+
+        for packet in self.packets:
+            default_val = [0, 0, 0]
+            ps = packet.summary
+            s = self.summary
+
+            self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
+                            set(ps) | set(s)}
+
+    def sum_pkt_types(self):
+        """
+        Method used to summarize packet types present in the file.
+        """
+
+        # Clear previous content of packet_types attribute
+        self.packet_types = {}
+
+        # Create list of states of packets present in the file
+        states = []
+        for packet in self.packets:
+            if packet.state not in states:
+                states.append(packet.state)
+
+        for idx, packet in enumerate(self.packets):
+            if packet.type in self.packet_types.keys():
+
+                self.packet_types[packet.type][packet.state]['num'] += 1
+
+                if packet.problems:
+                    warnings, errors = [], []
+
+                    for parameter, value in packet.problems.items():
+                        if value['Warnings']:
+                            warnings.append(parameter)
+                        if value['Errors']:
+                            errors.append(parameter)
+
+                    idx_val = {idx + 1: {'warningParams': warnings, 'errorParams': errors}}
+                else:
+                    idx_val = idx + 1
+
+                self.packet_types[packet.type][packet.state]['idx'] = (
+                        self.packet_types[packet.type][packet.state]['idx'] + [idx_val])
+
+            else:
+                self.packet_types[packet.type] = {state: {'num': 0, 'idx': []} for state in states}
+                self.sum_pkt_types()
+
     def output_results(self, output_location):
 
         if self.state == 'Analysis complete':
 
-            # Functions used to fill self.pkt_types and summary
-            def add_pkt_summary():
-                default_val = [0, 0, 0]
-                ps = packet.summary
-                s = self.summary
-
-                self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
-                                set(ps) | set(s)}
-
-            def add_pkt_types():
-                if packet.type in self.packet_types.keys():
-
-                    self.packet_types[packet.type][packet.state]['num'] += 1
-
-                    if packet.problems:
-                        warnings, errors = [], []
-
-                        for parameter, value in packet.problems.items():
-                            if value['Warnings']:
-                                warnings.append(parameter)
-                            if value['Errors']:
-                                errors.append(parameter)
-
-                        idx_val = {idx + 1: {'warningParams': warnings, 'errorParams': errors}}
-                    else:
-                        idx_val = idx + 1
-
-                    self.packet_types[packet.type][packet.state]['idx'] = (
-                            self.packet_types[packet.type][packet.state]['idx'] + [idx_val])
-
-                else:
-                    self.packet_types[packet.type] = {state: {'num': 0, 'idx': []} for state in states}
-                    add_pkt_types()
-
-            # Create list of states of packets present in the file
-            states = []
-            for packet in self.packets:
-                if packet.state not in states:
-                    states.append(packet.state)
-
-            # Generate statistics
-            for idx, packet in enumerate(self.packets):
-                add_pkt_summary()
-                add_pkt_types()
+            # Generate final statistics
+            self.create_summary()
+            self.sum_pkt_types()
 
             # Create folder in output_location based on session name (taken from log_file)
             output_path = os.path.join(output_location, os.path.splitext(os.path.basename(self.log_file))[0])
