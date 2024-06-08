@@ -264,6 +264,9 @@ class PacketAnalyser(object):
                             f'{pkt.type} packet {idx + 1}/{len(self.packets)} analysed in '
                             f'{(time_packet_end - time_packet_start).total_seconds():.1f} seconds.')
                     else:
+                        # Save packet into analysed cache to know its' analysis was skipped
+                        self.__cache_action(file, 'w', pkt)
+
                         self.log_message(f'Skipping {pkt.type} packet {idx + 1}/{len(self.packets)}.')
 
             # Update state
@@ -292,45 +295,44 @@ class PacketAnalyser(object):
             self.summary = {k: list(map(add, ps.get(k, default_val), s.get(k, default_val))) for k in
                             set(ps) | set(s)}
 
-    def sum_pkt_types(self, recursion=False):
+    def sum_pkt_types(self):
         """
         Method used to summarize packet types present in the file.
         """
+        def pkt_types_algorithm():
+            if packet.type in self.packet_types:
 
-        # Clear previous content of packet_types attribute
-        if not recursion:
-            self.packet_types = {}
+                if packet.state in self.packet_types[packet.type]:
+                    self.packet_types[packet.type][packet.state]['num'] += 1
 
-        # Create list of states of packets present in the file
-        states = []
-        for packet in self.packets:
-            if packet.state not in states:
-                states.append(packet.state)
+                    if packet.problems:
+                        warnings, errors = [], []
 
-        for idx, packet in enumerate(self.packets):
-            if packet.type in self.packet_types.keys():
+                        for parameter, value in packet.problems.items():
+                            if value['Warnings']:
+                                warnings.append(parameter)
+                            if value['Errors']:
+                                errors.append(parameter)
 
-                self.packet_types[packet.type][packet.state]['num'] += 1
+                        idx_val = {idx + 1: {'warningParams': warnings, 'errorParams': errors}}
+                    else:
+                        idx_val = idx + 1
 
-                if packet.problems:
-                    warnings, errors = [], []
-
-                    for parameter, value in packet.problems.items():
-                        if value['Warnings']:
-                            warnings.append(parameter)
-                        if value['Errors']:
-                            errors.append(parameter)
-
-                    idx_val = {idx + 1: {'warningParams': warnings, 'errorParams': errors}}
+                    self.packet_types[packet.type][packet.state]['idx'] = (
+                            self.packet_types[packet.type][packet.state]['idx'] + [idx_val])
                 else:
-                    idx_val = idx + 1
-
-                self.packet_types[packet.type][packet.state]['idx'] = (
-                        self.packet_types[packet.type][packet.state]['idx'] + [idx_val])
+                    self.packet_types[packet.type][packet.state] = {'num': 0, 'idx': []}
+                    pkt_types_algorithm()
 
             else:
-                self.packet_types[packet.type] = {state: {'num': 0, 'idx': []} for state in states}
-                self.sum_pkt_types(recursion=True)
+                self.packet_types[packet.type] = {}
+                pkt_types_algorithm()
+
+        # Clear previous content of packet_types attribute:
+        self.packet_types = {}
+
+        for idx, packet in enumerate(self.packets):
+            pkt_types_algorithm()
 
     def output_results(self, output_location):
 
