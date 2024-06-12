@@ -22,7 +22,7 @@ def launch_cli_sequence(config_file, pcap_file):
     def display_message(message, is_error=False):
         """Display prompt or error message."""
         prefix = "[Error] " if is_error else "[Prompt] "
-        print(f"{prefix}{message}", end='')
+        print(f"{prefix}{message}")
 
     def get_input_with_prompt(prompt_message):
         """Get input from the user with a prompt message."""
