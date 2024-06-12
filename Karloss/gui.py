@@ -237,10 +237,3 @@ class PacketAnalyzerApp:
         # Append the message to the log text window
         self.log_text.insert(tk.END, formatted_message + "\n")
         self.log_text.see(tk.END)  # Scroll to the end of the log
-
-
-if __name__ == "__main__":
-    # Launch the configuration window
-    config_root = tk.Tk()
-    config_app = ConfigurationWindow(config_root)
-    config_root.mainloop()
