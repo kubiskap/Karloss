@@ -1,0 +1,4 @@
+include Karloss/example_data/*
+include Karloss/example_data/asn/en/*
+include Karloss/example_data/asn/iso/*
+include Karloss/example_data/asn/ts/*

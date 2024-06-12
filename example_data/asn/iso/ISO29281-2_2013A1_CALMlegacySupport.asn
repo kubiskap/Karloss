@@ -1,0 +1,32 @@
+CALMlegacySupport { iso (1) standard (0) calm-nonip(29281) legacy (2) asnm-1 (1)}  
+
+DEFINITIONS AUTOMATIC TAGS::=BEGIN
+
+IMPORTS
+PortNumber FROM CALMfntp { iso (1) standard (0) calm-nonip(29281) fntp(1) asnm-1 (1)} 
+;
+
+-- End of IMPORTS
+
+-- General types --
+
+Param15628::=SEQUENCE{
+	fill	BIT STRING (SIZE(7)),
+	params	CHOICE{
+			legacyOption	INTEGER(0..255),
+			portPM	PortNumber -- Port number of 15628 Port Manager
+		}
+	}
+
+FNTPlpp::=OCTET STRING (SIZE(0..65535))
+
+-- Values
+
+version INTEGER(0..255)::=1 -- Version of this ASN.1 module
+
+/*
+   The ASN.1 specification has been checked for conformance to the ASN.1
+   standards by OSS ASN.1 Syntax Checker, and by OSS ASN-1STEP
+*/
+
+END
