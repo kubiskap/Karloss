@@ -36,31 +36,37 @@ The user will be prompted to enter the directory, in which he wishes to save the
 Clone the root directory of the repository. Check if all required software in __Requirements__ is installed. The packages with parentheses behind them are not required for the basic CLI functionality, but the features specified in parentheses will NOT work.
 
 ### CLI
-Currently, the script is not yet structured as a Python package, so you need to start by importing `PacketAnalyser` class from the `core.py` script.
+The project is structured as a Python package, so you need to start by building the package and installing it.
 
-To be able to do that, you need to extend your Python PATH with the directory you cloned the repository into.
+To be able to do that, navigate to the directory, in which you cloned the project.
 ```
-import sys
-sys.path.extend(['C:\\PATH\\TO\\ROOT\\DIRECTORY'])
-```
-
-Now you should be able to import the main script:
-```
-from core import PacketAnalyser
+cd path/to/your/project_directory
 ```
 
-__Proceed as follows:__
+Now you should be able to build the source distribution (note, python libraries `build` and `wheel` must be installed):
+```
+python setup.py sdist bdist_wheel
+```
 
-1. To start a new session of the script, create a class object of `PacketAnalyser`:
+Lastly, install the package you just built by executing:
+```
+pip install .
+```
+
+
+__Usage:__
+
+1. To start a new session of the script, create a class object of `Instance`:
    ```
-   karloss = PacketAnalyser(config_location='PATH\\TO\\CONFIG.JSON')
+   karloss = Karloss.Instance(config_location='PATH\\TO\\CONFIG.JSON')
    ```
-   If you don't want to specify your custom config location and want to use the file included in the root of the script, just call `karloss = PacketAnalyser()`.
+   In the root project directory, an `example_config.json` is provided, which uses ASN.1 definitions from the `example_data/` directory.
 
-2. To import the pcap file, call method `import_file()` of the object:
+2. To import a pcap file, call method `import_file()` of the object:
    ```
    karloss.import_file(input_file='PATH\\TO\\PCAP\\FILE')
    ```
+   In the `example_data/` directory, a few data capture files are provided for testing.
 
 4. Call the `analyse()` method to launch the analysis:
    ```
@@ -83,9 +89,9 @@ __Proceed as follows:__
 The core script enables logging each session into the `log` directory in the script root. Cache is also implemented, meaning that for repeated analysis of the same file, packets are imported from cache. If the analysis were to be interrupted, the script should pick up where it left off after launching the analysis again for the same file.
 
 ### GUI
-The usage of the GUI is fairly straightforward, although some features are not yet implemented. You should be able to just launch the `gui.py` file using console:
+The usage of the GUI is fairly straightforward, although some features are not implemented. You should be able to just launch the `launch_gui.py` file in the root of project using console:
 ```
-python C:\\PATH\\TO\\SCRIPT\\ROOT\\gui.py
+python launch_gui.py
 ```
 
 In the first window, you will be prompted to select the `config.json` file and the pcap file. After clicking `Accept Config`, a window with a text box will pop up. In this textbox, all of the output of CLI is provided. 
