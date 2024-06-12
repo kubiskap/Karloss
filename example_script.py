@@ -14,9 +14,122 @@ def launch_gui():
     config_root.mainloop()
 
 
+def display_message(message, is_error=False):
+    """Display prompt or error message."""
+    prefix = "[Error] " if is_error else "[Prompt] "
+    print(f"{prefix}{message}", end='')
+
+
+def get_input_with_prompt(prompt_message):
+    """Get input from the user with a prompt message."""
+    display_message(prompt_message)
+    return input()
+
+
+def get_expected_value():
+    """Prompt user to enter the expected value parameter path."""
+    while True:
+        parameter = get_input_with_prompt('Enter the full path to the parameter: ')
+        if isinstance(parameter, str) and len(parameter.split('.')) > 1:
+            return parameter
+        display_message('Invalid input.', is_error=True)
+
+
+def get_expected_value_value():
+    """Prompt user to enter the expected value or multiple values for a parameter."""
+    while True:
+        value = get_input_with_prompt(
+            'Enter the expected value of the parameter or enter "multiple" if you wish to specify multiple expected values: ')
+        if value == 'multiple':
+            values = []
+            i = 1
+            while True:
+                multiple_value = get_input_with_prompt(
+                    f'Enter expected value of the parameter. [no. {i}, type "done" to finish entry]: ')
+                if multiple_value.lower() == 'done':
+                    break
+                elif multiple_value:
+                    values.append(multiple_value)
+                    i += 1
+                else:
+                    display_message('Invalid input.', is_error=True)
+            return values
+        elif value:
+            return value
+        display_message('Invalid input.', is_error=True)
+
+
+def prompt_for_expected_value():
+    """Prompt user to define an expected value of a parameter."""
+    while True:
+        define_expected_value = get_input_with_prompt(
+            'Do you wish to define an expected value of a parameter? [y/N]: ') or 'n'
+        if define_expected_value.lower() == 'y':
+            parameter = get_expected_value()
+            value = get_expected_value_value()
+            return {parameter: value}
+        elif define_expected_value.lower() == 'n':
+            return {}
+        display_message('Invalid input.', is_error=True)
+
+
+def get_filter_mode(entity):
+    """Prompt user to select filter mode (whitelist/blacklist) for packets or parameters."""
+    while True:
+        mode = get_input_with_prompt(f'Which mode do you want to use to filter the {entity}? [whitelist/blacklist]: ')
+        if mode.lower() in ['blacklist', 'whitelist']:
+            return mode.lower()
+        display_message('Invalid input.', is_error=True)
+
+
+def get_filter_list(entity, mode):
+    """Prompt user to enter filter list for packets or parameters."""
+    filter_list = []
+    i = 1
+    while True:
+        item = get_input_with_prompt(
+            f'Enter {entity} to be included in the {mode} filter. [no. {i}, type "done" to finish entry]: ')
+        if item.lower() == 'done':
+            break
+        elif isinstance(item, str):
+            filter_list.append(item.upper())
+            i += 1
+        else:
+            display_message('Invalid input.', is_error=True)
+    return filter_list
+
+
+def prompt_for_packet_filter():
+    """Prompt user to filter packets to be analysed based on their type."""
+    while True:
+        filter_packets = get_input_with_prompt(
+            'Do you wish to filter packets to be analysed based on their type? [y/N]: ') or 'n'
+        if filter_packets.lower() == 'y':
+            mode = get_filter_mode('packets')
+            filter_list = get_filter_list('packet type', mode)
+            return mode, filter_list
+        elif filter_packets.lower() == 'n':
+            return 'Undefined', []
+        display_message('Invalid input.', is_error=True)
+
+
+def prompt_for_parameter_filter():
+    """Prompt user to filter parameters to be analysed based on their path."""
+    while True:
+        filter_parameters = get_input_with_prompt(
+            'Do you wish to filter parameters to be analysed based on their path? [y/N]: ') or 'n'
+        if filter_parameters.lower() == 'y':
+            mode = get_filter_mode('parameters')
+            filter_list = get_filter_list('parameter path', mode)
+            return mode, filter_list
+        elif filter_parameters.lower() == 'n':
+            return 'Undefined', []
+        display_message('Invalid input.', is_error=True)
+
+
 def launch_cli_sequence(config_file, pcap_file):
     """
-    For smooth user experience, run the CLI sequence which will be used by most users.
+    For a smooth user experience, run the CLI sequence which will be used by most users.
     """
 
     # Launch a new instance of Karloss
@@ -25,139 +138,17 @@ def launch_cli_sequence(config_file, pcap_file):
     # Import the file specified
     karloss_instance.import_file(input_file=pcap_file)
 
-    # -- Ask for analysis parameters
-    # Expected value parameter prompt
-    while True:
-        prompt_define_expected_value = input('[Prompt] Do you wish to define an expected value of a parameter? [y/N]: ') or 'n'
+    # Prompt for expected value
+    parameter_expected_val = prompt_for_expected_value()
 
-        if prompt_define_expected_value.lower() == 'y':
+    # Prompt for packet filtering
+    packet_filter_mode, filter_packets = prompt_for_packet_filter()
 
-            while True:
-                prompt_expected_parameter = input('[Prompt] Enter the full path to the parameter: ')
+    # Prompt for parameter filtering
+    parameter_filter_mode, filter_parameters = prompt_for_parameter_filter()
 
-                if isinstance(prompt_expected_parameter, str):
-                    if len(prompt_expected_parameter.split('.')) > 1:
-                        break
-                    else:
-                        print('[Error] Invalid input. ', end='')
-                else:
-                    print('[Error] Invalid input. ', end='')
-
-            while True:
-
-                prompt_expected_parameter_value = input('[Prompt] Enter the expected value of the parameter or enter "multiple",'
-                                                        ' if you wish to specify multiple expected values: ')
-
-                if prompt_expected_parameter_value == 'multiple':
-                    prompt_expected_parameter_value, i = [], 1
-                    while True:
-                        prompt_define_expected_value_multiple = input(f'[Prompt] Enter expected value of the parameter. '
-                                                    f'[no. {i}, type "done" to finish entry]: ')
-
-                        if prompt_define_expected_value_multiple.lower() == 'done':
-                            break
-                        elif prompt_define_expected_value_multiple:
-                            prompt_expected_parameter_value.append(prompt_define_expected_value_multiple)
-                            i += 1
-                        else:
-                            print('[Error] Invalid input. ', end='')
-                elif prompt_expected_parameter_value:
-                    break
-                else:
-                    print('[Error] Invalid input. ', end='')
-
-            parameter_expected_val = {prompt_expected_parameter: prompt_expected_parameter_value}
-            break
-
-        elif prompt_define_expected_value.lower() == 'n':
-            parameter_expected_val = {}
-            break
-        else:
-            print('[Error] Invalid input. ', end='')
-
-    # Packet filtering prompt
-    while True:
-        prompt_filter_packets = input(
-            '[Prompt] Do you wish to filter packets to be analysed based on their type? [y/N]: ') or 'n'
-
-        if prompt_filter_packets.lower() == 'y':
-
-            while True:
-                prompt_filter_packets_mode = input('[Prompt] Which mode do you want to use to filter the packets? '
-                                                   '[whitelist/blacklist]: ')
-
-                if prompt_filter_packets_mode.lower() in ['blacklist', 'whitelist']:
-                    packet_filter_mode = prompt_filter_packets_mode.lower()
-                    break
-                else:
-                    print('[Error] Invalid input. ', end='')
-
-            # Init filter_packets list
-            filter_packets, i = [], 1
-
-            while True:
-                prompt_filter_packets_types = input(f'[Prompt]  packet type to be included in the packet '
-                                                    f'{packet_filter_mode} filter. '
-                                                    f'[no. {i}, type "done" to finish entry]: ')
-
-                if prompt_filter_packets_types.lower() == 'done':
-                    break
-                elif isinstance(prompt_filter_packets_types, str):
-                    filter_packets.append(prompt_filter_packets_types.upper())
-                    i += 1
-                else:
-                    print('[Error] Invalid input. ', end='')
-
-            break
-
-        elif prompt_filter_packets.lower() == 'n':
-            packet_filter_mode, filter_packets = 'Undefined', []
-            break
-
-        else:
-            print('[Error] Invalid input. ', end='')
-
-    # Parameter filtering prompt
-    while True:
-        prompt_filter_parameters = input(
-            '[Prompt] Do you wish to filter parameters to be analysed based on their path? [y/N]: ') or 'n'
-
-        if prompt_filter_parameters.lower() == 'y':
-
-            while True:
-                prompt_filter_parameters_mode = input('[Prompt] Which mode do you want to use to filter the parameters? '
-                                                      '[whitelist/blacklist]: ')
-
-                if prompt_filter_parameters_mode.lower() in ['blacklist', 'whitelist']:
-                    parameter_filter_mode = prompt_filter_parameters_mode.lower()
-                    break
-                else:
-                    print('[Error] Invalid input. ', end='')
-
-            # Init filter_packets list
-            filter_parameters = [], 1
-
-            while True:
-                prompt_filter_parameters_types = input(f'[Prompt] Enter parameter path to be included in the packet '
-                                                       f'{packet_filter_mode} filter. '
-                                                       f'[no. {i}, type "done" to finish entry]: ')
-
-                if prompt_filter_parameters_types.lower() == 'done':
-                    break
-                elif isinstance(prompt_filter_parameters_types, str):
-                    filter_packets.append(prompt_filter_parameters_types.upper())
-                    i += 1
-                else:
-                    print('[Error] Invalid input. ', end='')
-
-            break
-
-        elif prompt_filter_parameters.lower() == 'n':
-            parameter_filter_mode, filter_parameters = 'Undefined', []
-            break
-
-        else:
-            print('[Error] Invalid input. ', end='')
+    # Continue with the rest of your logic
+    # Example: karloss_instance.analyse(parameters=parameter_expected_val, packet_filter_mode=packet_filter_mode, filter_packets=filter_packets, parameter_filter_mode=parameter_filter_mode, filter_parameters=filter_parameters)
 
     # Analyse the file imported based on the options chosen
     karloss_instance.analyse(parameter_expected_value=parameter_expected_val,
