@@ -21,24 +21,25 @@ def launch_cli_sequence(config_file, pcap_file):
     For a smooth user experience, run the CLI sequence which will be used by most users.
     """
 
-    def display_message(message, type='prompt'):
+    def display_message(message, type='info'):
         """Display prompt or error message."""
 
         prefix = type.title()
-
         print(f"[{prefix}] {message}")
 
     def get_input_with_prompt(prompt_message):
         """Get input from the user with a prompt message."""
-        display_message(prompt_message)
-        return input()
+        return input(f'[Prompt] {prompt_message}')
 
-    def get_expected_value_parameter():
+    def get_expected_value_parameter(idx):
         """Prompt user to enter the expected value parameter path."""
         while True:
-            parameter = get_input_with_prompt('Enter the full path to the parameter: ')
-            if isinstance(parameter, str) and len(parameter.split('.')) > 1:
-                return parameter
+            parameter_path = get_input_with_prompt(f'Enter the full path to the parameter. [no. {idx}, type "done" to '
+                                                   f'finish entry]: ')
+            if isinstance(parameter_path, str) and len(parameter_path.split('.')) > 1:
+                return parameter_path
+            elif parameter_path == 'done':
+                return parameter_path
             display_message('Invalid input: the path needs to be separated with dots (".").', type='error')
 
     def get_expected_value_value():
@@ -70,9 +71,18 @@ def launch_cli_sequence(config_file, pcap_file):
         while True:
             define_expected_value = get_input_with_prompt('Do you wish to define an expected value of a parameter? [y/N]: ') or 'n'
             if define_expected_value.lower()[0] == 'y':
-                parameter = get_expected_value_parameter()
-                value = get_expected_value_value()
-                return {parameter: value}
+                expected_parameters, i = {}, 1
+                while True:
+                    parameter_path = get_expected_value_parameter(i)
+
+                    if parameter_path != 'done':
+                        value = get_expected_value_value()
+                        expected_parameters[parameter_path] = value
+                        i += 1
+                    else:
+                        break
+
+                return expected_parameters
             elif define_expected_value.lower()[0] == 'n':
                 return {}
             display_message('Invalid input: enter "y" or "n".', type='error')
@@ -93,7 +103,7 @@ def launch_cli_sequence(config_file, pcap_file):
             item = get_input_with_prompt(f'Enter {entity} to be included in the {mode} filter. [no. {i}, type "done" to finish entry]: ')
             if item.lower() == 'done':
                 break
-            elif isinstance(item, str):
+            elif isinstance(item, str) and len(item) >= 1:
                 filter_list.append(item)
                 i += 1
             else:
@@ -152,7 +162,7 @@ def launch_cli_sequence(config_file, pcap_file):
 
     def prompt_for_group_markers():
         while True:
-            group_markers_prompt = get_input_with_prompt('Do you wish to group markers on the map? [y/N]: ') or 'n'
+            group_markers_prompt = get_input_with_prompt('Do you wish to group markers on the map? [Y/n]: ') or 'y'
             if group_markers_prompt.lower()[0] == 'y':
                 return True
             elif group_markers_prompt.lower()[0] == 'n':
