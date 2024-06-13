@@ -53,7 +53,7 @@ class Instance(object):
         self.state = None
 
         # Display session information
-        self.log_message(f'New session started with config: {config_location}')
+        self.log_message(f'New session started with config: {os.path.abspath(config_location)}')
 
     @staticmethod
     def __cache_action(file_path, action, cache_object=None):
@@ -162,7 +162,7 @@ class Instance(object):
             time_import_end = datetime.datetime.now()
             import_duration = (time_import_end - time_import_start).total_seconds()
             self.log_message(
-                f'{idx + 1} packets imported from {input_file}; Import duration: {import_duration:.2f} seconds. '
+                f'{idx + 1} packets imported from {os.path.abspath(input_file)}; Import duration: {import_duration:.2f} seconds. '
                 f'Total imported packets: {len(self.packets)}')
         finally:
             # Explicitly close the capture to release resources and terminate event loop
@@ -410,7 +410,7 @@ class Instance(object):
 
             # Save map
             if os.path.isdir(output_location):
-                output_location = os.path.join(output_location, os.path.splitext(os.path.basename(self.log_file))[0])
+                output_location = os.path.join(output_location, os.path.splitext(os.path.basename(self.log_file))[0] + '.html')
             map_object.map.save(output_location)
 
             self.log_message(f'Map successfully plotted to {output_location}')
