@@ -409,6 +409,8 @@ class Instance(object):
             map_object.create(group_markers)
 
             # Save map
+            if os.path.isdir(output_location):
+                output_location = os.path.join(output_location, os.path.splitext(os.path.basename(self.log_file))[0])
             map_object.map.save(output_location)
 
             self.log_message(f'Map successfully plotted to {output_location}')
