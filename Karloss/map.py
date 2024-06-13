@@ -39,7 +39,7 @@ class Map(object):
         # Raise an exception if requested packet type is not configured in map_data
         for packet_type in self.packet_types:
             if packet_type not in self.session_object.config['mapConfig'].keys():
-                raise Exception(f'Message type "{packet_type}" not configured in config.')
+                raise ReferenceError(f'Message type "{packet_type}" not configured in config.')
 
         # Get map data from each selected packet
         map_data = {}
