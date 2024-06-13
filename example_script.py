@@ -51,7 +51,8 @@ def launch_cli_sequence(config_file, pcap_file):
                 values = []
                 i = 1
                 while True:
-                    multiple_value = get_input_with_prompt(f'Enter expected value of the parameter. [no. {i}, type "done" to finish entry]: ')
+                    multiple_value = get_input_with_prompt(f'Enter expected value of the parameter. '
+                                                           f'[no. {i}, type "done" to finish entry]: ')
                     if multiple_value.lower() == 'done':
                         break
                     elif multiple_value:
@@ -103,7 +104,7 @@ def launch_cli_sequence(config_file, pcap_file):
             item = get_input_with_prompt(f'Enter {entity} to be included in the {mode} filter. [no. {i}, type "done" to finish entry]: ')
             if item.lower() == 'done':
                 break
-            elif isinstance(item, str) and len(item) >= 1:
+            elif isinstance(item, str) and item:
                 filter_list.append(item)
                 i += 1
             else:
