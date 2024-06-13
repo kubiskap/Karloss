@@ -4,7 +4,6 @@ import os
 
 from Karloss.gui import ConfigurationWindow
 from Karloss.core import Instance
-from Karloss.map import Map
 
 
 def launch_gui():
