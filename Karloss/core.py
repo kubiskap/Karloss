@@ -323,14 +323,13 @@ class Instance(object):
                             if value['Errors']:
                                 errors.append(parameter)
 
-                        idx_val = {idx + 1: {'warningParams': warnings, 'errorParams': errors}}
+                        idx_val = {'warningParams': warnings, 'errorParams': errors}
                     else:
-                        idx_val = idx + 1
+                        idx_val = {'warningParams': None, 'errorParams': None}
 
-                    self.packet_types[packet.type][packet.state]['idx'] = (
-                            self.packet_types[packet.type][packet.state]['idx'] + [idx_val])
+                    self.packet_types[packet.type][packet.state]['idx'][idx + 1] = idx_val
                 else:
-                    self.packet_types[packet.type][packet.state] = {'num': 0, 'idx': []}
+                    self.packet_types[packet.type][packet.state] = {'num': 0, 'idx': {}}
                     pkt_types_algorithm()
 
             else:
