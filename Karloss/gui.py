@@ -58,7 +58,7 @@ class ConfigurationWindow:
 
         if config_file and pcap_file:
             # Initialize PacketAnalyser object with the specified config file
-            packet_handler = PacketAnalyser(config_location=config_file)
+            packet_handler = Instance(config_location=config_file)
 
             # Import packets from the specified PCAP file
             start_import_time = datetime.datetime.now()
