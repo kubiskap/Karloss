@@ -96,17 +96,39 @@ class ItsMessage(object):
             def process_sequence_of(value: dict, path: list) -> dict:
                 output = value.copy()
                 try:
-                    element_asn = asn_algorithm(value['element']['type'], path + [value['element']['type']])
+                    element_asn = asn_algorithm(value['element']['type'], path + ['element', value['element']['type']])
                 except KeyError:
-                    element_asn = asn_algorithm(list(value['element'])[0], path + [list(value['element'])[0]])
+                    element_asn = asn_algorithm(list(value['element'])[0], path + ['element', list(value['element'])[0]])
                 output['element'] = element_asn
                 return output
+
+            def has_repeating_pairs(path):
+                path_no_element = [i for i in path if i != 'element']
+                count_pairs = {}
+                for i in range(len(path_no_element) - 1):
+                    pair = (path_no_element[i], path_no_element[i + 1])
+                    if pair in count_pairs:
+                        return True
+                    count_pairs[pair] = 1
+                return False
+
+            def find_reference_element_path(path):
+                reference_element_name = path.pop(-1)
+
+                for idx, element in enumerate(path):
+                    if element == reference_element_name:
+                        return path[:idx + 1]
 
             parameter_asn = types.get(parameter_name)
             key_name = parameter_path[-1] if parameter_path else parameter_name
             output_dict = {}
 
-            if parameter_asn is not None:
+            # Loop prevention
+            if has_repeating_pairs(parameter_path):
+                output_dict[key_name] = {'loopDetected': True,
+                                         'referenceParameterPath': find_reference_element_path(parameter_path)}
+
+            elif parameter_asn is not None:
                 if parameter_asn['type'] in types:
                     output_dict[key_name] = process_type(parameter_asn, parameter_path)
                 elif parameter_asn['type'].split('.')[0] in object_classes:

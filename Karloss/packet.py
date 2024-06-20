@@ -9,6 +9,9 @@ class Packet(object):
             Internal method to convert the raw decoded packet into a true dictionary.
             """
 
+            def process_tuple(input_tuple):
+                return process_packet({input_tuple[0]: input_tuple[1]})
+
             def process_list(input_list):
                 output_dict = {}
                 for index, item in enumerate(input_list):
@@ -17,6 +20,8 @@ class Packet(object):
                             output_dict[f'listItem{index}'] = process_list(item)
                         case dict():
                             output_dict[f'listItem{index}'] = process_packet(item)
+                        case tuple():
+                            output_dict[f'listItem{index}'] = process_tuple(item)
                         case _:
                             output_dict[f'listItem{index}'] = item
                 return output_dict
@@ -27,7 +32,7 @@ class Packet(object):
 
                 # Convert CHOICE, which returns (str, value) into {str: value}
                 if isinstance(value, tuple) and isinstance(value[0], str):
-                    output_dict[key] = process_packet({value[0]: value[1]})
+                    output_dict[key] = process_tuple(value)
 
                 # Convert BIT STRING, which returns (bytes, int) to bits
                 elif isinstance(value, tuple) and isinstance(value[0], bytes) and isinstance(value[1], int):
@@ -187,13 +192,34 @@ class Packet(object):
 
             def analyse_parameter(self):
                 def get_parameter_asn():
+
+                    def search_adjacent():
+                        # Try searching in adjacent parameters, maybe it was cut off to prevent loops
+                        pair_searched = (self.asn_path[-2], self.asn_path[-1])
+                        match = None
+
+                        for i in range(len(self.asn_path) - 1):
+                            current_pair = (self.asn_path[i], self.asn_path[i + 1])
+                            if pair_searched == current_pair:
+                                match = jsonpath_ng.parse("$." + ".".join(self.asn_path[:i+1])).find(self.packet_asn)
+                                if match:
+                                    break
+
+                        return match
+
                     asn_matches = jsonpath_ng.parse("$." + ".".join(self.asn_path)).find(self.packet_asn)
 
                     if not asn_matches:
-                        # Parameter not found in ASN dictionary
-                        self.problems.append(
-                            self.Problem('Error', 'ASN data type invalid or definition not found for this parameter.'))
-                    else:
+                        # Try to find it in adjacent parameters with the same name
+                        asn_matches = search_adjacent()
+
+                        if not asn_matches:
+                            # No luck, we can't analyse it
+                            self.problems.append(
+                                self.Problem('Error', 'ASN data type invalid or definition not found for this'
+                                                      ' parameter.'))
+
+                    if asn_matches:
                         asn_definition = asn_matches[0].value
 
                         if asn_definition == 'ASN not found':
@@ -308,11 +334,12 @@ class Packet(object):
 
                                     if 'size' in self.asn.keys():
                                         size_allowed = []
-                                        for size in self.asn['size']:
-                                            if not None:
-                                                size_allowed.append(len(self.value) in range(size[0], size[1] + 1))
+                                        for idx, size in enumerate(self.asn['size']):
+                                            if size is not None:
+                                                size_allowed.append(
+                                                    len(self.value) in range(size[0], size[1] + 1))
                                             else:
-                                                size_allowed.append(self.value is None)
+                                                self.asn['size'].pop(idx)
                                         if not all(size_allowed):
                                             self.problems.append(self.Problem('Error', f'Out of specified size ({self.asn['size']}).'))
 
@@ -344,11 +371,11 @@ class Packet(object):
 
                                     if 'size' in self.asn.keys():
                                         size_allowed = []
-                                        for size in self.asn['size']:
-                                            if not None:
+                                        for idx, size in enumerate(self.asn['size']):
+                                            if size is not None:
                                                 size_allowed.append(len(self.value.keys()) in range(size[0], size[1] + 1))
                                             else:
-                                                size_allowed.append(self.value is None)
+                                                self.asn['size'].pop(idx)
                                         if not all(size_allowed):
                                             self.problems.append(self.Problem('Error', f'Out of specified size ({self.asn['size']}).'))
 
