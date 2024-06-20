@@ -9,6 +9,9 @@ class Packet(object):
             Internal method to convert the raw decoded packet into a true dictionary.
             """
 
+            def process_tuple(input_tuple):
+                return process_packet({input_tuple[0]: input_tuple[1]})
+
             def process_list(input_list):
                 output_dict = {}
                 for index, item in enumerate(input_list):
@@ -17,6 +20,8 @@ class Packet(object):
                             output_dict[f'listItem{index}'] = process_list(item)
                         case dict():
                             output_dict[f'listItem{index}'] = process_packet(item)
+                        case tuple():
+                            output_dict[f'listItem{index}'] = process_tuple(item)
                         case _:
                             output_dict[f'listItem{index}'] = item
                 return output_dict
@@ -27,7 +32,7 @@ class Packet(object):
 
                 # Convert CHOICE, which returns (str, value) into {str: value}
                 if isinstance(value, tuple) and isinstance(value[0], str):
-                    output_dict[key] = process_packet({value[0]: value[1]})
+                    output_dict[key] = process_tuple(value)
 
                 # Convert BIT STRING, which returns (bytes, int) to bits
                 elif isinstance(value, tuple) and isinstance(value[0], bytes) and isinstance(value[1], int):
