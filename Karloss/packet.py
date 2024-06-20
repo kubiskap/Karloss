@@ -196,6 +196,12 @@ class Packet(object):
 
                     if not asn_matches:
                         # Parameter not found in ASN dictionary
+
+                        # Try searching in adjacent parameters, maybe it was cut off to prevent loops
+                        parameter_name = self.asn_path[-1]
+                        ## TBD ##
+
+                        # No luck, we can't analyse it
                         self.problems.append(
                             self.Problem('Error', 'ASN data type invalid or definition not found for this parameter.'))
                     else:
