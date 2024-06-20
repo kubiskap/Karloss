@@ -313,11 +313,12 @@ class Packet(object):
 
                                     if 'size' in self.asn.keys():
                                         size_allowed = []
-                                        for size in self.asn['size']:
-                                            if not None:
-                                                size_allowed.append(len(self.value) in range(size[0], size[1] + 1))
+                                        for idx, size in enumerate(self.asn['size']):
+                                            if size is not None:
+                                                size_allowed.append(
+                                                    len(self.value) in range(size[0], size[1] + 1))
                                             else:
-                                                size_allowed.append(self.value is None)
+                                                self.asn['size'].pop(idx)
                                         if not all(size_allowed):
                                             self.problems.append(self.Problem('Error', f'Out of specified size ({self.asn['size']}).'))
 
@@ -349,11 +350,11 @@ class Packet(object):
 
                                     if 'size' in self.asn.keys():
                                         size_allowed = []
-                                        for size in self.asn['size']:
+                                        for idx, size in enumerate(self.asn['size']):
                                             if size is not None:
                                                 size_allowed.append(len(self.value.keys()) in range(size[0], size[1] + 1))
                                             else:
-                                                size_allowed.append(self.value is None)
+                                                self.asn['size'].pop(idx)
                                         if not all(size_allowed):
                                             self.problems.append(self.Problem('Error', f'Out of specified size ({self.asn['size']}).'))
 
