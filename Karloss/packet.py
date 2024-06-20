@@ -192,19 +192,34 @@ class Packet(object):
 
             def analyse_parameter(self):
                 def get_parameter_asn():
+
+                    def search_adjacent():
+                        # Try searching in adjacent parameters, maybe it was cut off to prevent loops
+                        pair_searched = (self.asn_path[-2], self.asn_path[-1])
+                        match = None
+
+                        for i in range(len(self.asn_path) - 1):
+                            current_pair = (self.asn_path[i], self.asn_path[i + 1])
+                            if pair_searched == current_pair:
+                                match = jsonpath_ng.parse("$." + ".".join(self.asn_path[:i+1])).find(self.packet_asn)
+                                if match:
+                                    break
+
+                        return match
+
                     asn_matches = jsonpath_ng.parse("$." + ".".join(self.asn_path)).find(self.packet_asn)
 
                     if not asn_matches:
-                        # Parameter not found in ASN dictionary
+                        # Try to find it in adjacent parameters with the same name
+                        asn_matches = search_adjacent()
 
-                        # Try searching in adjacent parameters, maybe it was cut off to prevent loops
-                        parameter_name = self.asn_path[-1]
-                        ## TBD ##
+                        if not asn_matches:
+                            # No luck, we can't analyse it
+                            self.problems.append(
+                                self.Problem('Error', 'ASN data type invalid or definition not found for this'
+                                                      ' parameter.'))
 
-                        # No luck, we can't analyse it
-                        self.problems.append(
-                            self.Problem('Error', 'ASN data type invalid or definition not found for this parameter.'))
-                    else:
+                    if asn_matches:
                         asn_definition = asn_matches[0].value
 
                         if asn_definition == 'ASN not found':
