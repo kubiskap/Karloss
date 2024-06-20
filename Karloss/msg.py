@@ -102,11 +102,24 @@ class ItsMessage(object):
                 output['element'] = element_asn
                 return output
 
+            def has_repeating_pairs(path):
+                count_pairs = {}
+                for i in range(len(path) - 1):
+                    pair = (path[i], path[i + 1])
+                    if pair in count_pairs:
+                        return True
+                    count_pairs[pair] = 1
+                return False
+
             parameter_asn = types.get(parameter_name)
             key_name = parameter_path[-1] if parameter_path else parameter_name
             output_dict = {}
 
-            if parameter_asn is not None:
+            # Loop prevention
+            if has_repeating_pairs(parameter_path):
+                output_dict[key_name] = {'loopDetected': True}
+
+            elif parameter_asn is not None:
                 if parameter_asn['type'] in types:
                     output_dict[key_name] = process_type(parameter_asn, parameter_path)
                 elif parameter_asn['type'].split('.')[0] in object_classes:
