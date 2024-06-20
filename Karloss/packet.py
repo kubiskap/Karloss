@@ -350,7 +350,7 @@ class Packet(object):
                                     if 'size' in self.asn.keys():
                                         size_allowed = []
                                         for size in self.asn['size']:
-                                            if not None:
+                                            if size is not None:
                                                 size_allowed.append(len(self.value.keys()) in range(size[0], size[1] + 1))
                                             else:
                                                 size_allowed.append(self.value is None)
