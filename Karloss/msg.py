@@ -23,6 +23,7 @@ class ItsMessage(object):
         """
         Method used to decode extracted encoded data from pyshark using asn1tools and ASN.1 specification. Returns
         """
+        malformed = False
 
         # Compile the dictionary
         try:
@@ -39,8 +40,9 @@ class ItsMessage(object):
 
         except Exception as OtherError:
             content = f'{repr(OtherError).split('(')[0]}({str(OtherError)})'
+            malformed = True
 
-        return content
+        return malformed, content
 
     def rebuild_asn(self):
         types = dict(ChainMap(*[self.its_dictionary[container]['types'] for container in self.its_dictionary]))

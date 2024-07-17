@@ -112,13 +112,17 @@ class Instance(object):
                     return Packet(msg_type='Unknown C-ITS',
                                   content=None, arrival_time=pkt.sniff_time)
                 else:
-                    content = msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value))
+                    malformed, content = msg_object.decode(encoded=bytes.fromhex(pkt.its_raw.value))
 
                     # Wrap the entire message into one big container
                     content = {msg_object.msg_name: content}
 
-                    return Packet(msg_type=msg_object.msg_name,
-                                  content=content, arrival_time=pkt.sniff_time, asn=msg_object.asn_rebuilt)
+                    if not malformed:
+                        return Packet(msg_type=msg_object.msg_name,
+                                      content=content, arrival_time=pkt.sniff_time, asn=msg_object.asn_rebuilt)
+                    else:
+                        return Packet(msg_type='Malformed',
+                                      content=content, arrival_time=pkt.sniff_time, asn=msg_object.asn_rebuilt)
             else:
                 return Packet(msg_type='Non-C-ITS',
                               content=None, arrival_time=pkt.sniff_time)
