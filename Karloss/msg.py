@@ -31,7 +31,6 @@ class ItsMessage(object):
             print(f'{repr(CompError).split('(')[0]}({str(CompError)})')
             sys.exit()
 
-
         try:
             content = compiled_dict.decode(self.msg_name, encoded, check_constraints=False)
 
@@ -39,7 +38,6 @@ class ItsMessage(object):
             content = f'{repr(ASNerror).split('(')[0]}({str(ASNerror)})'
 
         except Exception as OtherError:
-            msg_type = 'Malformed'
             content = f'{repr(OtherError).split('(')[0]}({str(OtherError)})'
 
         return content
