@@ -1,5 +1,6 @@
 import asn1tools
 from collections import ChainMap
+import sys
 
 
 class ItsMessage(object):
@@ -24,7 +25,12 @@ class ItsMessage(object):
         """
 
         # Compile the dictionary
-        compiled_dict = asn1tools.compile_dict(self.its_dictionary, encoding_type)
+        try:
+            compiled_dict = asn1tools.compile_dict(self.its_dictionary, encoding_type)
+        except asn1tools.CompileError as CompError:
+            print(f'{repr(CompError).split('(')[0]}({str(CompError)})')
+            sys.exit()
+
 
         try:
             content = compiled_dict.decode(self.msg_name, encoded, check_constraints=False)
