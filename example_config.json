@@ -3,79 +3,78 @@
         "2001": {
             "msgName": "CAM",
             "asnFiles": [
-                "./example_data/asn/en/ITS-Container.asn",
-                "./example_data/asn/en/CAM-PDU-Descriptions.asn"
+                "./example_data/asn/vanetza/TS102894-2v131-CDD.asn",
+                "./example_data/asn/vanetza/EN302637-2v141-CAM.asn"
             ]
         },
         "2002": {
             "msgName": "DENM",
             "asnFiles": [
-                "./example_data/asn/en/ITS-Container.asn",
-                "./example_data/asn/en/DENM-PDU-Descriptions.asn"
+                "./example_data/asn/vanetza/TS102894-2v131-CDD.asn",
+                "./example_data/asn/vanetza/EN302637-3v131-DENM.asn"
             ]
         },
         "2003": {
             "msgName": "MAPEM",
             "asnFiles": [
-                "./example_data/asn/en/ITS-Container.asn",
-                "./example_data/asn/iso/ISO14823-missing.asn",
-                "./example_data/asn/iso/ISO_17419.1.asn",
-                "./example_data/asn/iso/ISO_14823-1 ed1_AnnexE.asn",
-                "./example_data/asn/iso/ISO17573-3(2021)EfcDataDictionary.asn",
-                "./example_data/asn/iso/ISO_TS_14816.asn",
-                "./example_data/asn/iso/ISO14906(2018)EfcDsrcApplicationv6-patched.asn",
-                "./example_data/asn/iso/ISO14906(2018)EfcDsrcGenericv7-patched.asn",
-                "./example_data/asn/iso/ISO19321IVIv2.asn",
-                "./example_data/asn/iso/ISO24534-3_ElectronicRegistrationIdentificationVehicleDataModule-patched.asn",
-                "./example_data/asn/ts/MAPEM-PDU-Descriptions.asn"
+                "./example_data/asn/vanetza/TS102894-2v131-CDD.asn",
+                "./example_data/asn/vanetza/EN302637-2v141-CAM.asn",
+                "./example_data/asn/vanetza/ISO14816.asn",
+                "./example_data/asn/vanetza/ISO19091.asn",
+                "./example_data/asn/vanetza/ISO24534-3.asn",
+                "./example_data/asn/vanetza/TR103562v211-CPM.asn",
+                "./example_data/asn/vanetza/TS103301v211-MAPEM.asn"
             ]
         },
         "2004": {
             "msgName": "SPATEM",
             "asnFiles": [
-                "./example_data/asn/en/ITS-Container.asn",
-                "./example_data/asn/iso/ISO14823-missing.asn",
-                "./example_data/asn/iso/ISO_17419.1.asn",
-                "./example_data/asn/iso/ISO_14823-1 ed1_AnnexE.asn",
-                "./example_data/asn/iso/ISO17573-3(2021)EfcDataDictionary.asn",
-                "./example_data/asn/iso/ISO_TS_14816.asn",
-                "./example_data/asn/iso/ISO14906(2018)EfcDsrcApplicationv6-patched.asn",
-                "./example_data/asn/iso/ISO14906(2018)EfcDsrcGenericv7-patched.asn",
-                "./example_data/asn/iso/ISO19321IVIv2.asn",
-                "./example_data/asn/iso/ISO24534-3_ElectronicRegistrationIdentificationVehicleDataModule-patched.asn",
-                "./example_data/asn/ts/SPATEM-PDU-Descriptions.asn"
+                "./example_data/asn/vanetza/TS102894-2v131-CDD.asn",
+                "./example_data/asn/vanetza/EN302637-2v141-CAM.asn",
+                "./example_data/asn/vanetza/ISO14816.asn",
+                "./example_data/asn/vanetza/ISO19091.asn",
+                "./example_data/asn/vanetza/ISO24534-3.asn",
+                "./example_data/asn/vanetza/TR103562v211-CPM.asn",
+                "./example_data/asn/vanetza/TS103301v211-SPATEM.asn"
+            ]
+        },
+        "2006": {
+            "msgName": "IVIM",
+            "asnFiles": [
+                "./example_data/asn/vanetza/TS102894-2v131-CDD.asn",
+                "./example_data/asn/vanetza/ISO14816.asn",
+                "./example_data/asn/vanetza/ISO14906-1-7.asn",
+                "./example_data/asn/vanetza/ISO14906-0-6.asn",
+                "./example_data/asn/vanetza/ISO19321.asn",
+                "./example_data/asn/vanetza/ISO17419.1.asn",
+                "./example_data/asn/vanetza/ISO24534-3.asn",
+                "./example_data/asn/vanetza/ISO14823.asn",
+                "./example_data/asn/vanetza/ISO-TS-19091-addgrp-C-2018.asn",
+                "./example_data/asn/vanetza/TS103301v211-IVIM.asn"
             ]
         },
         "2007": {
             "msgName":  "SREM",
             "asnFiles": [
-                "./example_data/asn/en/ITS-Container.asn",
-                "./example_data/asn/iso/ISO14823-missing.asn",
-                "./example_data/asn/iso/ISO_17419.1.asn",
-                "./example_data/asn/iso/ISO_14823-1 ed1_AnnexE.asn",
-                "./example_data/asn/iso/ISO17573-3(2021)EfcDataDictionary.asn",
-                "./example_data/asn/iso/ISO_TS_14816.asn",
-                "./example_data/asn/iso/ISO14906(2018)EfcDsrcApplicationv6-patched.asn",
-                "./example_data/asn/iso/ISO14906(2018)EfcDsrcGenericv7-patched.asn",
-                "./example_data/asn/iso/ISO19321IVIv2.asn",
-                "./example_data/asn/iso/ISO24534-3_ElectronicRegistrationIdentificationVehicleDataModule-patched.asn",
-                "./example_data/asn/ts/SREM-PDU-Descriptions.asn"
+                "./example_data/asn/vanetza/TS102894-2v131-CDD.asn",
+                "./example_data/asn/vanetza/EN302637-2v141-CAM.asn",
+                "./example_data/asn/vanetza/ISO14816.asn",
+                "./example_data/asn/vanetza/ISO19091.asn",
+                "./example_data/asn/vanetza/ISO24534-3.asn",
+                "./example_data/asn/vanetza/TR103562v211-CPM.asn",
+                "./example_data/asn/vanetza/TS103301v211-SREM.asn"
             ]
         },
         "2008": {
             "msgName": "SSEM",
             "asnFiles": [
-                "./example_data/asn/en/ITS-Container.asn",
-                "./example_data/asn/iso/ISO14823-missing.asn",
-                "./example_data/asn/iso/ISO_17419.1.asn",
-                "./example_data/asn/iso/ISO_14823-1 ed1_AnnexE.asn",
-                "./example_data/asn/iso/ISO17573-3(2021)EfcDataDictionary.asn",
-                "./example_data/asn/iso/ISO_TS_14816.asn",
-                "./example_data/asn/iso/ISO14906(2018)EfcDsrcApplicationv6-patched.asn",
-                "./example_data/asn/iso/ISO14906(2018)EfcDsrcGenericv7-patched.asn",
-                "./example_data/asn/iso/ISO19321IVIv2.asn",
-                "./example_data/asn/iso/ISO24534-3_ElectronicRegistrationIdentificationVehicleDataModule-patched.asn",
-                "./example_data/asn/ts/SSEM-PDU-Descriptions.asn"
+                "./example_data/asn/vanetza/TS102894-2v131-CDD.asn",
+                "./example_data/asn/vanetza/EN302637-2v141-CAM.asn",
+                "./example_data/asn/vanetza/ISO14816.asn",
+                "./example_data/asn/vanetza/ISO19091.asn",
+                "./example_data/asn/vanetza/ISO24534-3.asn",
+                "./example_data/asn/vanetza/TR103562v211-CPM.asn",
+                "./example_data/asn/vanetza/TS103301v211-SSEM.asn"
             ]
         }
     },
