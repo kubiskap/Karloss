@@ -1,5 +1,6 @@
 import asn1tools
 from collections import ChainMap
+import sys
 
 
 class ItsMessage(object):
@@ -22,9 +23,14 @@ class ItsMessage(object):
         """
         Method used to decode extracted encoded data from pyshark using asn1tools and ASN.1 specification. Returns
         """
+        malformed = False
 
         # Compile the dictionary
-        compiled_dict = asn1tools.compile_dict(self.its_dictionary, encoding_type)
+        try:
+            compiled_dict = asn1tools.compile_dict(self.its_dictionary, encoding_type)
+        except asn1tools.CompileError as CompError:
+            print(f'{repr(CompError).split('(')[0]}({str(CompError)})')
+            sys.exit()
 
         try:
             content = compiled_dict.decode(self.msg_name, encoded, check_constraints=False)
@@ -33,10 +39,10 @@ class ItsMessage(object):
             content = f'{repr(ASNerror).split('(')[0]}({str(ASNerror)})'
 
         except Exception as OtherError:
-            msg_type = 'Malformed'
             content = f'{repr(OtherError).split('(')[0]}({str(OtherError)})'
+            malformed = True
 
-        return content
+        return malformed, content
 
     def rebuild_asn(self):
         types = dict(ChainMap(*[self.its_dictionary[container]['types'] for container in self.its_dictionary]))
