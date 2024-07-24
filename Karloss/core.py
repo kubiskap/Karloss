@@ -121,7 +121,7 @@ class Instance(object):
                         return Packet(msg_type=msg_object.msg_name,
                                       content=content, arrival_time=pkt.sniff_time, asn=msg_object.asn_rebuilt)
                     else:
-                        return Packet(msg_type='Malformed',
+                        return Packet(msg_type=msg_object.msg_name, state='Malformed',
                                       content=content, arrival_time=pkt.sniff_time, asn=msg_object.asn_rebuilt)
             else:
                 return Packet(msg_type='Non-C-ITS',
