@@ -283,7 +283,7 @@ class Packet(object):
                                         numbers = (
                                         'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
                                         'twenty', 'thirty', 'fourty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety',
-                                        'hundred')
+                                        'hundred', 'wgs84')
                                         named_num_is_unit = []
                                         for named_num in self.asn['named-numbers'].keys():
                                             named_num_is_unit.append(named_num.startswith(numbers))
