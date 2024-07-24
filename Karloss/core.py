@@ -32,7 +32,7 @@ class Instance(object):
         except json.JSONDecodeError:
             raise Exception('Config syntax invalid. Make sure your json config has valid syntax.')
 
-        self.__ignored_packet_types = ['Malformed', 'Non-C-ITS', 'Unknown C-ITS']
+        self.__ignored_packet_types = ['Non-C-ITS', 'Unknown C-ITS']
 
         # Establish ItsMessage object for each message type configured
         self.configured_msgs = {key: ItsMessage(asn_files=value['asnFiles'], msg_name=value['msgName'])
