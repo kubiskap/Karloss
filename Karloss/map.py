@@ -33,7 +33,7 @@ class Map(object):
             return value
 
         # Isolate all packets matching selected packet types and with data of type dictionary
-        selected_packets = [packet for packet in self.session_object.packets if packet.type in self.packet_types
+        selected_packets = [packet for packet in self.session_object.packets if packet.type in self.packet_types and packet.state not in ['Malformed', 'Not analysed']
                             and isinstance(packet.data, dict)]
 
         # Raise an exception if requested packet type is not configured in map_data
@@ -51,7 +51,6 @@ class Map(object):
             # Get config for this packet
             pkt_config = self.session_object.config['mapConfig'][packet.type]['paths']
 
-            innerBreak = False
             # For each parameter configured, find the value under this path
             innerBreak = False
             for key, path in pkt_config.items():
@@ -65,7 +64,7 @@ class Map(object):
                     # If anything is found in the packet
                     if value[0] is not None:
 
-                        # If there are no problems with the parameter or the only problem is with named-numbers, proceed
+                        # If there are no problems with the parameter, proceed
                         if path not in packet.problems.keys():
 
                             pkt_value[key] = (unit_conversion(value[0]), value[1])
